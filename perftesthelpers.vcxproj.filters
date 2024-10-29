@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Config">
+      <UniqueIdentifier>{4033c6cd-d66c-4d1f-adf7-f91312757035}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="_main.cpp">
@@ -26,26 +29,34 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bdmpx.h">
+    <ClInclude Include="include\bdmpx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="cputime_dummy.h">
+    <ClInclude Include="include\cputime_dummy.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="cputime_win.h">
+    <ClInclude Include="include\cputime_win.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="timer_linux.h">
+    <ClInclude Include="include\platform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="timer_win.h">
+    <ClInclude Include="include\timer_linux.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="timing.h">
+    <ClInclude Include="include\timer_win.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="platform.h">
+    <ClInclude Include="include\timing.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".gitignore">
+      <Filter>Config</Filter>
+    </None>
+    <None Include=".gitattributes">
+      <Filter>Config</Filter>
+    </None>
   </ItemGroup>
 </Project>
