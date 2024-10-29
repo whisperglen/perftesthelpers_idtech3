@@ -9,10 +9,10 @@ int main()
 {
     std::cout << "Hello Test!\n";
 
-    std::cout << std::endl << "Run this from command line if you want the perf results!\nDebug target is bad for SSE, and Local Windows Debbuger messes with Release.\n";
+    std::cout << std::endl << "Run this from command line if you want the perf results!\nDebug target is bad for SSE, and Local Windows Debbuger messes with Release.\n\n";
 
 #ifdef _DEBUG
-    std::cout << "\n*** Debug Mode! ***\n\n";
+    std::cout << "*** Debug Mode! ***\n\n";
 #endif
 
     maintest_rsqrt();

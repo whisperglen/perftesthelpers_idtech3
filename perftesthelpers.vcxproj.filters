@@ -13,7 +13,7 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Config">
+    <Filter Include="Config Files">
       <UniqueIdentifier>{4033c6cd-d66c-4d1f-adf7-f91312757035}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -53,10 +53,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore">
-      <Filter>Config</Filter>
+      <Filter>Config Files</Filter>
     </None>
     <None Include=".gitattributes">
-      <Filter>Config</Filter>
+      <Filter>Config Files</Filter>
+    </None>
+    <None Include="README.md">
+      <Filter>Config Files</Filter>
     </None>
   </ItemGroup>
 </Project>
