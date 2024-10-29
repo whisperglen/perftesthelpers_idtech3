@@ -5,6 +5,8 @@
 
 # Project-specific files
 testdata/
+*.exe
+*.bin
 
 # User-specific files
 *.rsuser
