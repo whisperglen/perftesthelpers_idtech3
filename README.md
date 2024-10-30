@@ -5,6 +5,11 @@ Binary dumps can be found in the sister repo: https://github.com/whisperglen/per
 Commited so far:<br>
 -rsqrt conversion<br>
 -sndmix conversion (S_WriteLinearBlastStereo16)<br>
+With missing databins (status 'unvalidated' for now):<br>
+-diffusecolor<br>
+-lerpmeshvertexes<br>
+-projectdlighttexture<br>
+-dotproduct experiments for neon<br>
 
 Results:<br>
 | function          |  x86   |  x64   |

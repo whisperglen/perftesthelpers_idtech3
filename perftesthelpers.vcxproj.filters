@@ -16,22 +16,37 @@
     <Filter Include="Config Files">
       <UniqueIdentifier>{4033c6cd-d66c-4d1f-adf7-f91312757035}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Tooling">
+      <UniqueIdentifier>{f7988f99-4f1b-41d2-8deb-2530bff901e9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="_main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="bdmpx.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="rsqrt.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="csv.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="sndmix.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="diffusecolor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dotproduct.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lerpmeshvertexes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="projectdlighttexture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="bdmpx.c">
+      <Filter>Source Files\Tooling</Filter>
+    </ClCompile>
+    <ClCompile Include="csv.c">
+      <Filter>Source Files\Tooling</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

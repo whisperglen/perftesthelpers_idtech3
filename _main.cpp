@@ -5,6 +5,10 @@
 
 extern void maintest_rsqrt(void);
 extern void maintest_sndmix(void);
+extern void maintest_diffusecolor(void);
+extern void maintest_dotproduct(void);
+extern void maintest_lerpmeshvertexes(void);
+extern void maintest_projectdlighttexture(void);
 
 int main()
 {

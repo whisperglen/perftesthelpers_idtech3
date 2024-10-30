@@ -153,6 +153,10 @@
   <ItemGroup>
     <ClCompile Include="bdmpx.c" />
     <ClCompile Include="csv.c" />
+    <ClCompile Include="diffusecolor.cpp" />
+    <ClCompile Include="dotproduct.cpp" />
+    <ClCompile Include="lerpmeshvertexes.cpp" />
+    <ClCompile Include="projectdlighttexture.cpp" />
     <ClCompile Include="rsqrt.cpp" />
     <ClCompile Include="sndmix.cpp" />
     <ClCompile Include="_main.cpp" />
