@@ -13,6 +13,13 @@ struct Timer {
 	long long accum_ticks;
 
 	Timer() {
+		LARGE_INTEGER f;
+
+		BOOL ercd = QueryPerformanceFrequency(&f);
+		assert(ercd != 0);
+
+		frequency = 1.0 / f.QuadPart;
+
 		reset();
 		accum_ticks = 0;
 	}
@@ -45,16 +52,10 @@ struct Timer {
 
 	void reset()
 	{
-		LARGE_INTEGER f;
-
-		BOOL ercd = QueryPerformanceFrequency(&f);
-		assert(ercd != 0);
-
-		frequency = 1.0 / f.QuadPart;
 
 		LARGE_INTEGER st;
 
-		ercd = QueryPerformanceCounter(&st);
+		BOOL ercd = QueryPerformanceCounter(&st);
 		assert(ercd != 0);
 
 		start_ticks = st.QuadPart;

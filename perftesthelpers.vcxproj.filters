@@ -27,6 +27,9 @@
     <ClCompile Include="rsqrt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="csv.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\bdmpx.h">
@@ -48,6 +51,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\timing.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="csv.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

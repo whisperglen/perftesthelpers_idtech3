@@ -9,6 +9,6 @@ Results:<br>
 | function          |  x86   |  x64   |
 | :---------------- | :----: | :----: |
 | rsqrt_math        |  1     | 1      |
-| rsqrt_q3          |  0.90  | 1.31   |
-| rsqrt_sse_approx  |  0.67  | 0.98   |
-| rsqrt_sse         |  0.69  | 0.81   |
+| rsqrt_q3          |  0.64  | 0.98   |
+| rsqrt_sse_approx  |  0.54  | 0.80   |
+| rsqrt_sse         |  0.40  | 0.42   |

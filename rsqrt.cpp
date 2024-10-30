@@ -7,6 +7,7 @@
 #include "platform.h"
 #include "bdmpx.h"
 #include "timing.h"
+#include "csv.h"
 
 #if idsse
 #include <intrin.h>
@@ -15,7 +16,7 @@
 #include <nenon.h>
 #endif
 
-float Q_rsqrt_q3( float number )
+ID_INLINE float Q_rsqrt_q3( float number )
 {
 	long i;
 	float x2, y;
@@ -37,7 +38,7 @@ float Q_rsqrt_q3( float number )
 }
 
 #if idsse
-float Q_rsqrt_sse_precise( float number )
+ID_INLINE float Q_rsqrt_sse_precise( float number )
 {
 	__m128 x_f, y_f;
 	__m128 number_f;
@@ -63,7 +64,7 @@ float Q_rsqrt_sse_precise( float number )
 	return ret;
 }
 
-float Q_rsqrt_sse( float number )
+ID_INLINE float Q_rsqrt_sse( float number )
 {
 	__m128 number_f;
 	float ret;
@@ -81,12 +82,12 @@ float Q_rsqrt_sse( float number )
 #endif
 
 #if idneon
-float Q_rsqrt_neon(float number)
+ID_INLINE float Q_rsqrt_neon(float number)
 {
 	float32x2_t number_f;
 	float ret;
 
-	if (number == 0.f) return 1.f;
+	if (number == 0.f) return 1.f / FLT_MIN;
 
 	number_f = vld1_dup_f32(&number);
 
@@ -97,15 +98,74 @@ float Q_rsqrt_neon(float number)
 }
 #endif
 
-float Q_rsqrt_math( float number )
+ID_INLINE float Q_rsqrt_math( float number )
 {
-	if(number == 0.f) return 1.f/FLT_MIN;
+	if (number == 0.f) return 1.f / FLT_MIN;
+
 	return 1.f/sqrtf(number);
 }
 
+#define FUNCTION_INLINED(NAME) \
+void finline_##NAME(int reps, int inputsz, float *inputs, float *outputs, double *elapsed) \
+{ \
+	Timer timer; \
+	for (int r = 0; r < reps; r++) \
+		for (int i = 0; i < inputsz; i++) \
+		{ \
+			outputs[i] = NAME(inputs[i]); \
+		} \
+	*elapsed = timer.elapsed_ms(); \
+}
+typedef void (*rsqrt_fn_inlined)(int reps, int inputsz, float* inputs, float* outputs, double* elapsed);
+typedef float (*rsqrt_fn)(float number);
+
+struct function_data
+{
+	void* fp;
+	const char* fname;
+};
+
+static struct function_data data_fn[] =
+{
+	{ Q_rsqrt_math,        "       rsqrt_math" },
+	{ Q_rsqrt_q3,          "         rsqrt_q3" },
+#if idsse
+	{ Q_rsqrt_sse_precise, "rsqrt_sse_precise" },
+	{ Q_rsqrt_sse,         "        rsqrt_sse" },
+#endif
+#if idneon
+	{ Q_rsqrt_neon,        "       rsqrt_neon" },
+#endif
+	{ 0, 0 }
+};
+
+FUNCTION_INLINED(Q_rsqrt_math);
+FUNCTION_INLINED(Q_rsqrt_q3);
+#if idsse
+FUNCTION_INLINED(Q_rsqrt_sse_precise);
+FUNCTION_INLINED(Q_rsqrt_sse);
+#endif
+#if idneon
+FUNCTION_INLINED(Q_rsqrt_neon);
+#endif
+
+static struct function_data data_fn_inlined[] =
+{
+	{ finline_Q_rsqrt_math,        "       inl_rsqrt_math" },
+	{ finline_Q_rsqrt_q3,          "         inl_rsqrt_q3" },
+#if idsse
+	{ finline_Q_rsqrt_sse,         "        inl_rsqrt_sse" },
+	{ finline_Q_rsqrt_sse_precise, "inl_rsqrt_sse_precise" },
+#endif
+#if idneon
+	{ finline_Q_rsqrt_neon,        "       inl_rsqrt_neon" },
+#endif
+	{ 0, 0 }
+};
+
 #define ARRAY_SIZE(X) (sizeof(X)/sizeof(X[0]))
 
-float inputs [] =
+float shorttest_in [] =
 {
 	1.0f,
 	250.f,
@@ -113,7 +173,7 @@ float inputs [] =
 	2.8f,
 };
 
-float outputs[4][ARRAY_SIZE(inputs)];
+float shorttest_out[4][ARRAY_SIZE(shorttest_in)];
 
 #define TEST_SIZE 3 * 1000 * 1000
 
@@ -124,11 +184,11 @@ float output[4 * TEST_SIZE];
 void maintest_rsqrt(void)
 {
 	int i,j,k,sz = 0;
-	int tests = 0;
-
-	double elapsed;
+	int tested = 0;
 
 	memset(output, 0, sizeof(output));
+
+	csv_open("./results.csv");
 
 	//bdmpx_set_option(BDMPX_OPTION_PRECACHE_FILE_FOR_READ, 1);
 
@@ -146,80 +206,51 @@ void maintest_rsqrt(void)
 			break;
 		}
 		if (input[j] != 0.f)
-		{ //let's skip over zeroes since the precision comparison gives bogus results
+		{
+			//let's skip over zeroes since the precision comparison gives bogus results
 			j++;
 		}
 	}
-	printf("Test num %d\n", j);
+	printf("Test inputs %d\n", j);
 
 	Timer timer;
-	float* out = output;
+	float* out;
 
-	Sleep(100);
-	timer.reset();
-	for(int r = 0; r < REPETITIONS; r++)
-	for(i = 0; i < j; i++)
+	printf("\n>Force noinline results:\n");
+	for (tested = 0, out = output; data_fn[tested].fp != 0; tested++, out += TEST_SIZE)
 	{
-		out[i] = Q_rsqrt_math(input[i]);
-	}
-	elapsed = timer.elapsed_ms();
-	tests++;
-	out += TEST_SIZE;
-	printf("0 Q_rsqrt_math: %4.4f\n", elapsed);
+		rsqrt_fn callme = (rsqrt_fn)data_fn[tested].fp;
+		const char* myinfo = data_fn[tested].fname;
+		double elapsed;
 
-	Sleep(100);
-	timer.reset();
-	for (int r = 0; r < REPETITIONS; r++)
-	for(i = 0; i < j; i++)
+		timer.reset();
+		for (int r = 0; r < REPETITIONS; r++)
+			for (i = 0; i < j; i++)
+			{
+				out[i] = callme(input[i]);
+			}
+		elapsed = timer.elapsed_ms();
+		printf("%d %s: %4.4f\n", tested, myinfo, elapsed);
+		//csv_put_float(elapsed);
+	}
+
+	printf("\n>Inline results:\n");
+	for (tested = 0, out = output; data_fn_inlined[tested].fp != 0; tested++, out += TEST_SIZE)
 	{
-		out[i] = Q_rsqrt_q3(input[i]);
-	}
-	elapsed = timer.elapsed_ms();
-	tests++;
-	out += TEST_SIZE;
-	printf("1 Q_rsqrt_q3: %4.4f\n", elapsed);
+		rsqrt_fn_inlined callme = (rsqrt_fn_inlined)data_fn_inlined[tested].fp;
+		const char* myinfo = data_fn_inlined[tested].fname;
+		double elapsed;
 
-#if idsse
-	Sleep(100);
-	timer.reset();
-	for (int r = 0; r < REPETITIONS; r++)
-	for(i = 0; i < j; i++)
-	{
-		out[i] = Q_rsqrt_sse_precise(input[i]);
+		callme(REPETITIONS, j, input, out, &elapsed);
+		printf("%d %s: %4.4f\n", tested, myinfo, elapsed);
+		csv_put_float(elapsed);
 	}
-	elapsed = timer.elapsed_ms();
-	tests++;
-	out += TEST_SIZE;
-	printf("2 Q_rsqrt_sse_precise: %4.4f\n", elapsed);
 
-	Sleep(100);
-	timer.reset();
-	for (int r = 0; r < REPETITIONS; r++)
-	for(i = 0; i < j; i++)
-	{
-		out[i] = Q_rsqrt_sse(input[i]);
-	}
-	elapsed = timer.elapsed_ms();
-	tests++;
-	out += TEST_SIZE;
-	printf("3 Q_rsqrt_sse: %4.4f\n", elapsed);
-#endif
+	csv_put_string("\n");
+	csv_close();
 
-#if idneon
-	Sleep(100);
-	timer.reset();
-	for (int r = 0; r < REPETITIONS; r++)
-	for(i = 0; i < j; i++)
-	{
-		out[i] = Q_rsqrt_neon(input[i]);
-	}
-	elapsed = timer.elapsed_ms();
-	tests++;
-	out += TEST_SIZE;
-	printf("2 Q_rsqrt_neon: %4.4f\n", elapsed);
-#endif
-
-	for(k = 1; k < tests; k++)
+	printf("\ndiff: num min max avg\n");
+	for(k = 1; k < tested; k++)
 	{
 		double min = 100.0, max = 0.0, avg = 0.0;
 		double diff;
@@ -233,6 +264,6 @@ void maintest_rsqrt(void)
 			if(diff > max) max = diff;
 			avg += diff;
 		}
-		printf("diff %d %g %.9f %.9f\n", k, min, max, avg / j);
+		printf("diff: %d %g %.9f %.9f\n", k, min, max, avg / j);
 	}
 }

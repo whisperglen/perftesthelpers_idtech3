@@ -152,10 +152,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bdmpx.c" />
+    <ClCompile Include="csv.c" />
     <ClCompile Include="rsqrt.cpp" />
     <ClCompile Include="_main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="csv.h" />
     <ClInclude Include="include\bdmpx.h" />
     <ClInclude Include="include\cputime_dummy.h" />
     <ClInclude Include="include\cputime_win.h" />

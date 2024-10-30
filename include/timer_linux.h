@@ -11,49 +11,49 @@
 
 struct Timer {
 
+    long long start_usecs;
+    long long accum_usecs;
+
 	Timer() {
 		reset();
-    accum_usecs = 0;
+        accum_usecs = 0;
 	}
 
 	double elapsed_ms() const
 	{
-    struct timespec now;
+        struct timespec now;
 
-    int ercd = clock_gettime(CLOCK_MONOTONIC, &now);
-    assert(ercd != -1);
+        int ercd = clock_gettime(CLOCK_MONOTONIC, &now);
+        assert(ercd != -1);
 
-    long long delta = (now.tv_sec * 1000000) + (now.tv_nsec / 1000) - start_usecs;
+        long long delta = (now.tv_sec * 1000000) + (now.tv_nsec / 1000) - start_usecs;
 
-    return ((double)delta);
+        return ((double)delta);
 	}
 
-  double accum()
-  {
-    struct timespec now;
+    double accum()
+    {
+        struct timespec now;
 
-    int ercd = clock_gettime(CLOCK_MONOTONIC, &now);
-    assert(ercd != -1);
+        int ercd = clock_gettime(CLOCK_MONOTONIC, &now);
+        assert(ercd != -1);
 
-    long long delta = (now.tv_sec * 1000000) + (now.tv_nsec / 1000) - start_usecs;
+        long long delta = (now.tv_sec * 1000000) + (now.tv_nsec / 1000) - start_usecs;
 
-    accum_usecs += delta;
+        accum_usecs += delta;
 
-    return ((double)accum_usecs);
-  }
+        return ((double)accum_usecs);
+    }
 
-	void reset()
-  {
-    struct timespec start;
+    void reset()
+    {
+        struct timespec start;
 
-    int ercd = clock_gettime(CLOCK_MONOTONIC, &start);
-    assert(ercd != -1);
+        int ercd = clock_gettime(CLOCK_MONOTONIC, &start);
+        assert(ercd != -1);
 
-    start_usecs = start.tv_sec * 1000000 + (start.tv_nsec / 1000);
-	}
-
-	long long start_usecs;
-  long long accum_usecs;
+        start_usecs = start.tv_sec * 1000000 + (start.tv_nsec / 1000);
+    }
 };
 
 #endif
