@@ -16,6 +16,8 @@
 #define QDECL __cdecl
 
 #define ID_INLINE __inline
+#define QALIGNA(x) __declspec(align(x))
+#define QALIGNB(x)
 
 #if defined( _M_IX86 )
 #if _M_IX86_FP >= 2
@@ -29,6 +31,8 @@
 #if defined( _M_AMD64 )
 #undef idx64
 #define idx64 1
+//#undef id386
+//#define id386 1
 #undef idsse
 #define idsse 1
 #endif
@@ -38,6 +42,8 @@
 #ifdef __linux__
 
 #define ID_INLINE inline
+#define QALIGNA(x)
+#define QALIGNB(x) __attribute__((aligned(x)))
 
 #if defined __i386__
 #if defined __SSE__

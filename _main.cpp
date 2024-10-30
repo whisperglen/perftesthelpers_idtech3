@@ -4,6 +4,7 @@
 #include <iostream>
 
 extern void maintest_rsqrt(void);
+extern void maintest_sndmix(void);
 
 int main()
 {
@@ -15,7 +16,8 @@ int main()
     std::cout << "*** Debug Mode! ***\n\n";
 #endif
 
-    maintest_rsqrt();
+    //maintest_rsqrt();
+    maintest_sndmix();
 
     std::cout << std::endl;
     system("pause");
