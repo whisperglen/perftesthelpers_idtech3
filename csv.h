@@ -10,7 +10,7 @@ extern "C" {
 
 static FILE* local_f_csv = NULL;
 
-void csv_open(const char* name);
+int csv_open(const char* name);
 void csv_close();
 
 void csv_put_string(const char* str);

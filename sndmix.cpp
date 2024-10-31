@@ -459,10 +459,11 @@ static struct function_data data_fn[] =
 	{ 0, 0 }
 };
 
+#define ARRAY_SIZE(X) (sizeof(X)/sizeof(X[0]))
 
 #define MAX_SAMPLES 100000
 static QALIGNA(64)  int     snd_p_d[MAX_SAMPLES]  QALIGNB(64);
-static short   snd_out_d[(ARRAYSIZE(data_fn) -1) * MAX_SAMPLES];
+static short   snd_out_d[(ARRAY_SIZE(data_fn) -1) * MAX_SAMPLES];
 
 #define TEST_SEGMENTS 900000
 #define MAX_ERRORS 10
@@ -482,14 +483,18 @@ void maintest_sndmix(void)
   int i, j, k;
   int tested = 0;
   int err = 0;
-  Timer timer[ARRAYSIZE(data_fn) - 1];
-  Cputime cpu[ARRAYSIZE(data_fn) - 1];
-  double elapsed[ARRAYSIZE(data_fn) - 1];
-  double cputime[ARRAYSIZE(data_fn) - 1];
+  Timer timer[ARRAY_SIZE(data_fn) - 1];
+  Cputime cpu[ARRAY_SIZE(data_fn) - 1];
+  double elapsed[ARRAY_SIZE(data_fn) - 1];
+  double cputime[ARRAY_SIZE(data_fn) - 1];
 
   memset(snd_p_d, 0, sizeof(snd_p_d));
 
-  csv_open("results.csv");
+  err = csv_open("./results.csv");
+  if (err != 0)
+  {
+	  printf("Could not open the csv file.\n\n");
+  }
 
   err = bdmpx_create(NULL, "bdmpx_sndmix.bin", BDMPX_OP_READ);
   if (err != 0)

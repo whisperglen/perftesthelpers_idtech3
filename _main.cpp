@@ -12,18 +12,19 @@ extern void maintest_projectdlighttexture(void);
 
 int main()
 {
-    std::cout << "Hello Test!\n";
+    printf("Hello Test!\n");
 
-    std::cout << std::endl << "Run this from command line if you want the perf results!\nDebug target is bad for SSE, and Local Windows Debbuger messes with Release.\n\n";
+    printf("\nRun this from command line if you want the perf results!\nDebug target is bad for SSE, and Local Windows Debbuger messes with Release.\n\n");
 
 #ifdef _DEBUG
-    std::cout << "*** Debug Mode! ***\n\n";
+    printf("*** Debug Mode! ***\n\n");
 #endif
 
     //maintest_rsqrt();
-    maintest_sndmix();
+    //maintest_sndmix();
+    maintest_dotproduct();
 
-    std::cout << std::endl;
+    printf("\n");
     system("pause");
 }
 

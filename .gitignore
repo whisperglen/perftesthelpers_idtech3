@@ -8,6 +8,7 @@ testdata/
 /*.exe
 /*.bin
 /*.csv
+/*lock*csv*
 
 # User-specific files
 *.rsuser

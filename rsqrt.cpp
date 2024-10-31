@@ -185,14 +185,20 @@ void maintest_rsqrt(void)
 {
 	int i,j,k,sz = 0;
 	int tested = 0;
+	int ercd = 0;
+	double elapsed[ARRAY_SIZE(data_fn_inlined) - 1];
 
 	memset(output, 0, sizeof(output));
 
-	csv_open("./results.csv");
+	ercd = csv_open("./results.csv");
+	if (ercd != 0)
+	{
+		printf("Could not open the csv file.\n\n");
+	}
 
 	//bdmpx_set_option(BDMPX_OPTION_PRECACHE_FILE_FOR_READ, 1);
 
-	int ercd = bdmpx_create(NULL, "bdmpx_rsqrt.bin", BDMPX_OP_READ);
+	ercd = bdmpx_create(NULL, "bdmpx_rsqrt.bin", BDMPX_OP_READ);
 	if (ercd != 0)
 	{
 		printf("Could not open the test input file. Aborting.\n");
@@ -239,12 +245,15 @@ void maintest_rsqrt(void)
 	{
 		rsqrt_fn_inlined callme = (rsqrt_fn_inlined)data_fn_inlined[tested].fp;
 		const char* myinfo = data_fn_inlined[tested].fname;
-		double elapsed;
 
-		callme(REPETITIONS, j, input, out, &elapsed);
-		printf("%d %s: %4.4f\n", tested, myinfo, elapsed);
-		csv_put_float(elapsed);
+		callme(REPETITIONS, j, input, out, &elapsed[tested]);
+		printf("%d %s: %4.4f\n", tested, myinfo, elapsed[tested]);
+		csv_put_float(elapsed[tested]);
 	}
+	
+	csv_put_string(",");
+	for (k = 1; k < tested; k++)
+		csv_put_float(elapsed[k] / elapsed[0]);
 
 	csv_put_string("\n");
 	csv_close();

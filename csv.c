@@ -5,9 +5,10 @@
 
 //FILE* local_f_csv = NULL;
 
-void csv_open(const char* name)
+int csv_open(const char* name)
 {
 	local_f_csv = fopen(name, "a");
+	return ( ! local_f_csv);
 }
 
 #define RETRY_ONCE(X) \
