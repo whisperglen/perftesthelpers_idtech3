@@ -19,9 +19,9 @@ Results:<br>
 | rsqrt_sse_precise |  0.54  | 0.80   |
 | rsqrt_sse         |  0.40  | 0.42   |
 | sndmix_scalar     |  1     | 1      |
-| rsqrt_mmx         |  0.22  | n/a    |
-| rsqrt_sseasm      |  0.13  | n/a    |
-| rsqrt_sse         |  0.14  | 0.16   |
+| sndmix_mmx        |  0.22  | n/a    |
+| sndmix_sseasm     |  0.13  | n/a    |
+| sndmix_sse        |  0.14  | 0.16   |
 | dotprod           |  1     | 1      |
 | dotprod_sse       |  1.1   | 0.96   |
 | dotprod_sse_dp    |  0.64  | 0.86   |
