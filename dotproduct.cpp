@@ -85,13 +85,33 @@ static ID_INLINE float DotProduct_ssev3(const vec4_t a, const vec4_t b)
 	float ret;
 	__m128 aVec, bVec, zero;
 	__m128i clr;
-	//zero = _mm_setzero_ps();
+#if 0
 	aVec = _mm_loadu_ps(a);
 	bVec = _mm_loadu_ps(b);
+#else
+	zero = _mm_setzero_ps();
+	aVec = _mm_loadl_pi(zero, (const __m64*)a);
+	bVec = _mm_loadl_pi(zero, (const __m64*)b);
+#endif
 	aVec = _mm_mul_ps(aVec, bVec);
 	aVec = _mm_hadd_ps(aVec, aVec);
 	_mm_store_ss(&ret, aVec);
 	return ret + a[2] * b[2];
+}
+
+//DP is SSE4.1 and this is supported by modern desktop CPUs;
+//  but not if you have a pre-ryzen cpu
+static ID_INLINE float DotProduct_ssedp(const vec4_t a, const vec4_t b)
+{
+	float ret;
+	__m128 aVec, bVec, zero;
+	__m128i clr;
+	//zero = _mm_setzero_ps();
+	aVec = _mm_loadu_ps(a);
+	bVec = _mm_loadu_ps(b);
+	aVec = _mm_dp_ps(aVec, bVec, 0x77);
+	_mm_store_ss(&ret, aVec);
+	return ret;
 }
 #endif
 
@@ -125,6 +145,7 @@ FUNCTION_INLINED(DotProduct);
 FUNCTION_INLINED(DotProduct_sse);
 FUNCTION_INLINED(DotProduct_ssev2);
 FUNCTION_INLINED(DotProduct_ssev3);
+FUNCTION_INLINED(DotProduct_ssedp);
 #endif
 #if idneon
 FUNCTION_INLINED(DotProduct_neon);
@@ -137,6 +158,7 @@ static struct function_data data_fn_inlined[] =
 	{ finline_DotProduct_sse,    "   dotp_sse" },
 	{ finline_DotProduct_ssev2,  "dotp_sse_v2" },
 	{ finline_DotProduct_ssev3,  "dotp_sse_v3" },
+	{ finline_DotProduct_ssedp,  "dotp_sse_dp" },
 #endif
 #if idneon
 	{ finline_DotProduct_neon,   "  dotp_neon" },
@@ -144,13 +166,34 @@ static struct function_data data_fn_inlined[] =
 	{ 0, 0 }
 };
 
+//ain't nobody got time for cpuid
+static bool check_uop_supported(void)
+{
+	bool exception_caught = false;
+	float res = 1.0;
+	__try {
+		__m128 aVec = _mm_setzero_ps();
+		//aVec = _mm_fmadd_round_ss(aVec, aVec, aVec, _MM_FROUND_NEARBYINT);
+		aVec = _mm_dp_ps(aVec, aVec, 0x77);
+		_mm_store_ss(&res, aVec);
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER) {
+		exception_caught = true;
+	}
+	//__finally {
+	//	printf("result %d\n", AbnormalTermination());
+	//}
+	//printf("exception %d %f\n", caught, res);
+	return (!exception_caught && (res == 0.0f));
+}
 
 #define ARRAY_SIZE(X) (sizeof(X)/sizeof(X[0]))
 
 //theres about 7.300.000 samples in the datafile
 //there is alot of data here, maybe we care about the cache sizes as well ;-)
-//#define TEST_SIZE (128*1000)
-#define TEST_SIZE (8*1000*1000)
+//#define TEST_SIZE (1000*1000)
+#define TEST_SIZE (128*1000)
+//#define TEST_SIZE (8*1000*1000)
 
 static vec4_t ina[TEST_SIZE];
 static vec4_t inb[TEST_SIZE];
@@ -174,7 +217,7 @@ void maintest_dotproduct(void)
 
   memset(output, 0, sizeof(output));
 
-  ercd = csv_open("./results.csv");
+  ercd = csv_open("./results_dotproduct.csv");
   if (ercd != 0)
   {
 	  printf("Could not open the csv file.\n\n");
@@ -202,6 +245,12 @@ void maintest_dotproduct(void)
     assert(szb == sizeof(vec3_t));
   }
   printf("Test inputs %d\n", j);
+
+  csv_put_string("test samples:");
+  csv_put_int(j);
+  csv_put_string("repetitions:");
+  csv_put_int(REPETITIONS);
+  csv_put_string(",");
 
   Timer timer;
   float* out;

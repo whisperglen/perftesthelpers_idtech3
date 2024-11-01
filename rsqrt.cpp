@@ -190,7 +190,7 @@ void maintest_rsqrt(void)
 
 	memset(output, 0, sizeof(output));
 
-	ercd = csv_open("./results.csv");
+	ercd = csv_open("./results_rsqrt.csv");
 	if (ercd != 0)
 	{
 		printf("Could not open the csv file.\n\n");

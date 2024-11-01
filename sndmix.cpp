@@ -490,7 +490,7 @@ void maintest_sndmix(void)
 
   memset(snd_p_d, 0, sizeof(snd_p_d));
 
-  err = csv_open("./results.csv");
+  err = csv_open("./results_sndmix.csv");
   if (err != 0)
   {
 	  printf("Could not open the csv file.\n\n");
@@ -559,7 +559,7 @@ void maintest_sndmix(void)
   for (k = 0; k < tested; k++)
   {
 	  const char* myinfo = data_fn[k].fname;
-	  printf("%d %s: %4.4f %4.4f %4.4f %4.4f\n", tested, myinfo, elapsed[k], cputime[k], elapsed[k] / elapsed[0], cputime[k] / cputime[0]);
+	  printf("%d %s: %4.4f %4.4f %4.4f %4.4f\n", k, myinfo, elapsed[k], cputime[k], elapsed[k] / elapsed[0], cputime[k] / cputime[0]);
 	  csv_put_float(elapsed[k]);
   }
   csv_put_string(",");

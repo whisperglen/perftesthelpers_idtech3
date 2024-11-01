@@ -5,7 +5,7 @@ Binary dumps can be found in the sister repo: https://github.com/whisperglen/per
 Commited so far:<br>
 -rsqrt conversion<br>
 -sndmix conversion (S_WriteLinearBlastStereo16)<br>
--dotproduct experiments (this is a flop on x86; let's see on arm neon)<br>
+-dotproduct experiments (SSE4.1 is good, SSE3 improves when run in a row on the same dataset)<br>
 With missing databins (status 'unvalidated' for now):<br>
 -diffusecolor<br>
 -lerpmeshvertexes<br>
@@ -23,6 +23,5 @@ Results:<br>
 | rsqrt_sseasm      |  0.13  | n/a    |
 | rsqrt_sse         |  0.14  | 0.16   |
 | dotprod           |  1     | 1      |
-| dotprod_sse       |  1.07  | 0.93   |
-| dotprod_sse_v2    |  1.19  | 1      |
-| dotprod_sse_v3    |  1.05  | 0.84   |
+| dotprod_sse       |  1.1   | 0.96   |
+| dotprod_sse_dp    |  0.64  | 0.86   |

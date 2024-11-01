@@ -15,6 +15,7 @@ void csv_close();
 
 void csv_put_string(const char* str);
 void csv_put_float(double val);
+void csv_put_int(int val);
 
 
 #ifdef __cplusplus

@@ -38,6 +38,17 @@ void csv_put_float(double val)
 	}
 }
 
+void csv_put_int(int val)
+{
+	if (local_f_csv)
+	{
+		char str[1024];
+		int sz = snprintf(str, sizeof(str), "%d,", val);
+		RETRY_ONCE(fwrite(str, sz, 1, local_f_csv));
+		fflush(local_f_csv);
+	}
+}
+
 void csv_close()
 {
 	if (local_f_csv)
