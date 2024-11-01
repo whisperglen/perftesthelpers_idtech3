@@ -2,6 +2,7 @@
 //
 
 #include <iostream>
+#include "timing.h"
 
 extern void maintest_rsqrt(void);
 extern void maintest_sndmix(void);
@@ -14,7 +15,21 @@ int main()
 {
     printf("Hello Test!\n");
 
-    printf("\nRun this from command line if you want the perf results!\nDebug target is bad for SSE, and Local Windows Debbuger messes with Release.\n\n");
+    printf("\nRun this from command line if you want the perf results!\nDebug target is bad for SSE, and 'Local Windows Debbuger' messes with Release.\n\n");
+
+//#define VERIFY_TIMER_RESULTS
+#ifdef VERIFY_TIMER_RESULTS
+    srand(time(NULL));
+    Timer t;
+    for (int i = 0; i < 10; i++)
+    {
+        int val = abs(rand() % (3 * 1000));
+        t.reset();
+        Sleep(val);
+        printf("%d %f\n", val, t.elapsed_ms());
+    }
+#endif
+
 
 #ifdef _DEBUG
     printf("*** Debug Mode! ***\n\n");
@@ -22,7 +37,8 @@ int main()
 
     //maintest_rsqrt();
     //maintest_sndmix();
-    maintest_dotproduct();
+    //maintest_dotproduct();
+    maintest_diffusecolor();
 
     printf("\n");
     system("pause");

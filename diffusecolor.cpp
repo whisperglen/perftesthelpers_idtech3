@@ -4,10 +4,12 @@
 #include <cassert>
 #include <intrin.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #include "bdmpx.h"
 #include "timing.h"
 #include "platform.h"
+#include "csv.h"
 
 #define	myftol(x) ((int)(x))
 
@@ -113,7 +115,7 @@ static struct {
 	QALIGNA(16) vec4_t		normal[SHADER_MAX_VERTEXES];
 } tess;
 
-static void RB_CalcDiffuseColor_scalar( unsigned char *colors )
+static void RB_CalcDiffuseColor( unsigned char *colors )
 {
 	int				i, j;
 	float			/**v,*/ *normal;
@@ -187,9 +189,13 @@ static void RB_CalcDiffuseColor_enhanced(unsigned char *colors)
 	numVertexes = tess.numVertexes;
 	for (i = 0; i < numVertexes; i++, /*v += 4,*/ normal += 4) {
 		normalVec0 = _mm_load_ps(normal);
+#if 1
+		incomingVec0 = _mm_dp_ps(normalVec0, lightDirVec, 0x77);
+#else
 		incomingVec0 = _mm_mul_ps(normalVec0, lightDirVec);
 		incomingVec0 = _mm_hadd_ps(incomingVec0, zero);
 		incomingVec0 = _mm_hadd_ps(incomingVec0, zero);
+#endif
 		//incoming = DotProduct(normal, lightDir);
 		//if (incoming <= 0) {
 		if(_mm_comile_ss(incomingVec0,zero)) {
@@ -392,30 +398,62 @@ void RB_CalcDiffuseColor_vector( unsigned char *colors )
   //_mm_sfence();
 }
 
+typedef void (*diffuse_fn)(unsigned char* outputs);
+
+struct function_data
+{
+	void* fp;
+	const char* fname;
+};
+
+static struct function_data data_fn[] =
+{
+	{ RB_CalcDiffuseColor,            "    diffuse" },
+#if idsse
+	{ RB_CalcDiffuseColor_enhanced,   "diffuse_enh" },
+	{ RB_CalcDiffuseColor_vector,     "diffuse_vec" },
+#endif
+#if idneon
+	{ neon,                           "       neon" },
+#endif
+	{ 0, 0 }
+};
+
+#define ARRAY_SIZE(X) (sizeof(X)/sizeof(X[0]))
+
 #define MAX_COLOR_SAMPLES SHADER_MAX_VERTEXES
 struct {
-	QALIGNA(16)  unsigned int thecolors[3][MAX_COLOR_SAMPLES];
+	QALIGNA(16)  uint32_t thecolors[(ARRAY_SIZE(data_fn) - 1) * MAX_COLOR_SAMPLES];
 } data;
 
 #define TEST_SAMPLESIZE 100000
+
+#define MAX_ERRORS 20
+
+#define REPETITIONS 1
 void maintest_diffusecolor(void)
 {
   int sz, ercd;
   int i, j, k;
-  Timer timer0, timer1, timer2;
-  double elapsed0, elapsed1,elapsed2;
+  int err = 0;
+  int tested = 0;
+  Timer timer[ARRAY_SIZE(data_fn) - 1];
+  double elapsed[ARRAY_SIZE(data_fn) - 1];
 
-  memset(&data.thecolors, 0, sizeof(data.thecolors));
+  ercd = csv_open("./results_diffusecolor.csv");
+  if (ercd != 0)
+  {
+	  printf("Could not open the csv file.\n\n");
+  }
 
   //bdmpx_set_option(BDMPX_OPTION_PRECACHE_FILE_FOR_READ, 1);
 
-  int a = 0;
-  //while ((int)&data.thecolors[a] & 15)
+  ercd = bdmpx_create(NULL, "bdmpx_diffusecolor.bin", BDMPX_OP_READ);
+  if (ercd != 0)
   {
-	  //a++;
+	  printf("Could not open the test input file. Aborting.\n");
+	  return;
   }
-
-  bdmpx_create(NULL, "bdmpx_diffusecolor.bin", BDMPX_OP_READ);
 
   for(j = 0; j < TEST_SAMPLESIZE ; j++)
   {
@@ -434,51 +472,50 @@ void maintest_diffusecolor(void)
 
     if(ercd != 4)
       break;
-    
 
-	timer0.reset();
-	for (i = 0; i < 10; i++)
-	{
-		RB_CalcDiffuseColor_scalar((unsigned char*)&data.thecolors[0][a]);
-	}
-	elapsed0 = timer0.accum();
+	uint32_t* out;
 
-	timer1.reset();
-	for (i = 0; i < 10; i++)
-	{
-		RB_CalcDiffuseColor_enhanced((unsigned char*)&data.thecolors[1][a]);
-	}
-	elapsed1 = timer1.accum();
+	memset(&data.thecolors, 0, sizeof(data.thecolors));
 
-	timer2.reset();
-	for (i = 0; i < 10; i++)
+	for (tested = 0, out = data.thecolors; data_fn[tested].fp != 0; tested++, out += MAX_COLOR_SAMPLES)
 	{
-		RB_CalcDiffuseColor_vector((unsigned char*)&data.thecolors[2][a]);
+		diffuse_fn callme = (diffuse_fn)data_fn[tested].fp;
+		const char* myinfo = data_fn[tested].fname;
+
+		timer[tested].reset();
+		for (int r = 0; r < REPETITIONS; r++)
+			callme((unsigned char*)out);
+		elapsed[tested] = timer[tested].accum();
 	}
-	elapsed2 = timer2.accum();
-#if 0
-	if (memcmp(&data.thecolors[0][0], &data.thecolors[1][0], sizeof(data.thecolors[0])))
+
+	for (k = 0; k < tess.numVertexes/*MAX_COLOR_SAMPLES*/ && err < MAX_ERRORS; k++)
 	{
-		printf("x");
+		for (i = 1; i < tested; i++)
+		{
+			if (data.thecolors[k] != data.thecolors[i* MAX_COLOR_SAMPLES + k])
+			{
+				printf("id:%d seg:%d sam:%d/%d orig:%x here:%x\n", i, j, k, tess.numVertexes, data.thecolors[k], data.thecolors[i * MAX_COLOR_SAMPLES + k]);
+				err++;
+			}
+		}
 	}
-#if 1
-	if (memcmp(&data.thecolors[0][0], &data.thecolors[2][0], sizeof(data.thecolors[0])))
-	{
-		printf("y");
-	}
-#else
-	for (i = 0; i < MAX_COLOR_SAMPLES; i++)
-	if (data.thecolors[0][i] != data.thecolors[2][i])
-	{
-		printf("y %x %x %d\n", data.thecolors[0][i], data.thecolors[2][i],i);
-	}
-#endif
-#endif
+  }
+  
+  printf("Test segments %d\n", j);
+  for (k = 0; k < tested; k++)
+  {
+	  const char* myinfo = data_fn[k].fname;
+	  printf("%d %s: %4.4f %4.4f\n", k, myinfo, elapsed[k], elapsed[k] / elapsed[0]);
+	  csv_put_float(elapsed[k]);
   }
 
-  printf("size %d\n", j);
-  printf("scalar %4.4f\n", elapsed0);
-  printf("scalar1 %4.4f\n", elapsed1);
-  printf("vector %4.4f\n", elapsed2);
+  csv_put_string(",");
+  for (k = 1; k < tested; k++)
+  {
+	  csv_put_float(elapsed[k] / elapsed[0]);
+  }
+
+  csv_put_string("\n");
+  csv_close();
 
 }

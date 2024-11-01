@@ -6,8 +6,8 @@ Commited so far:<br>
 -rsqrt conversion<br>
 -sndmix conversion (S_WriteLinearBlastStereo16)<br>
 -dotproduct experiments (SSE4.1 is good, SSE3 improves when run in a row on the same dataset)<br>
-With missing databins (status 'unvalidated' for now):<br>
 -diffusecolor<br>
+With missing databins (status 'unvalidated' for now):<br>
 -lerpmeshvertexes<br>
 -projectdlighttexture<br>
 
@@ -25,3 +25,5 @@ Results:<br>
 | dotprod           |  1     | 1      |
 | dotprod_sse       |  1.1   | 0.96   |
 | dotprod_sse_dp    |  0.64  | 0.86   |
+| diffusecolor      |  1     | 1      |
+| diffusecolor_sse  |  0.4   | 0.38   |
