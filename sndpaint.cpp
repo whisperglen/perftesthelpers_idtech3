@@ -667,15 +667,15 @@ struct function_data
 
 static struct function_data data_fn[] =
 {
-	{ S_PaintChannelFrom16,        "sndpaint_scalar" },
+	{ S_PaintChannelFrom16,        "      sndpaint" },
 #if idsse
-	{ S_PaintChannelFrom16_SSE,    "   sndpaint_sse" },
+	{ S_PaintChannelFrom16_SSE,    "  sndpaint_sse" },
 #endif
 #if idneon
-	{ S_PaintChannelFrom16_NEON,   "  sndpaint_neon" },
+	{ S_PaintChannelFrom16_NEON,   " sndpaint_neon" },
 #endif
 #if idarm
-	{ S_PaintChannelFrom16_ARMv6,  " sndpaint_armv6" },
+	{ S_PaintChannelFrom16_ARMv6,  "sndpaint_armv6" },
 #endif
 	{ 0, 0 }
 };
@@ -722,19 +722,19 @@ void maintest_sndpaint(void)
 
 	if (ARRAY_SIZE(data_fn) - 1 > ARRAY_SIZE(paintbuffer) / PAINTBUFFER_SIZE)
 	{
-		printf("Need to increase size of paintbuffer to: %d * PAINTBUFFER_SIZE\n", ARRAY_SIZE(data_fn) - 1);
+		printf("Need to increase size of paintbuffer to: %d * PAINTBUFFER_SIZE\n", (int)ARRAY_SIZE(data_fn) - 1);
 		return;
 	}
 
 	ercd = csv_open("./results_sndpaint.csv");
-	if (err != 0)
+	if (ercd != 0)
 	{
 		printf("Could not open the csv file.\n\n");
 	}
 
-	bdmpx_set_option(BDMPX_OPTION_PRECACHE_FILE_FOR_READ, 1);
+	//bdmpx_set_option(BDMPX_OPTION_PRECACHE_FILE_FOR_READ, 1);
 	ercd = bdmpx_create(NULL, "bdmpx_paintchannel.bin", BDMPX_OP_READ);
-	if (err != 0)
+	if (ercd != 0)
 	{
 		printf("Could not open the test input file. Aborting.\n");
 		return;
@@ -744,6 +744,8 @@ void maintest_sndpaint(void)
 	int32_t sampleOffset;
 	channel_t channel;
 	sfx_t sfx;
+	const char assert_int_size[sizeof(int32_t) == sizeof(int)] = { 0 };
+	int total_processed = 0;
 
 	snd_vol = 204;
 
@@ -788,6 +790,7 @@ void maintest_sndpaint(void)
 			return;
 		}
 
+		total_processed += count;
 		memset(paintbuffer, 0, sizeof(paintbuffer));
 
 		for (tested = 0; data_fn[tested].fp != 0; tested++)
@@ -820,7 +823,7 @@ void maintest_sndpaint(void)
 
 	}
 
-	printf("SndPaint Test segments %d\n", j);
+	printf("SndPaint Test segments %d, total samples %d\n", j, total_processed);
 	for (k = 0; k < tested; k++)
 	{
 		const char* myinfo = data_fn[k].fname;

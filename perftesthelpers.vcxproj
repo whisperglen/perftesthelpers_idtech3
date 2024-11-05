@@ -163,6 +163,7 @@
     <ClCompile Include="projectdlighttexture.cpp" />
     <ClCompile Include="rsqrt.cpp" />
     <ClCompile Include="sndmix.cpp" />
+    <ClCompile Include="sndpaint.cpp" />
     <ClCompile Include="_main.cpp" />
   </ItemGroup>
   <ItemGroup>

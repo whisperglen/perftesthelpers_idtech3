@@ -26,3 +26,9 @@ Results:<br>
 | dotprod_sse_dp    |  0.64  | 0.86   |
 | diffusecolor      |  1     | 1      |
 | diffusecolor_sse  |  0.4   | 0.38   |
+| lerpmesh          |  1     | 1      |
+| lerpmesh_sse      |  0.82  | 0.79   |
+| projectdlight     |  1     | 1      |
+| projectdlight_sse |  1.02  | 1.02   |
+| sndpaint          |  1     | 1      |
+| sndpaint_sse      |  0.31  | 1.03   |
