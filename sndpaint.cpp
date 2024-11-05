@@ -69,7 +69,8 @@ typedef struct
 	float		oldDopplerScale;
 	vec3_t		origin_notUsed;			// only use if fixed_origin is set
 	qboolean	fixed_origin_notUsed;	// use origin instead of fetching entnum's origin
-	sfx_t		*thesfx_notUsed;		// sfx structure
+	//sfx_t		*thesfx_notUsed;		// sfx structure
+	int			thesfx_notUsed;
 	qboolean	doppler;
 } channel_t;
 
@@ -717,6 +718,8 @@ void maintest_sndpaint(void)
 	Cputime cpu[ARRAY_SIZE(data_fn) - 1];
 	double elapsed[ARRAY_SIZE(data_fn) - 1];
 	double cputime[ARRAY_SIZE(data_fn) - 1];
+
+	//printf("%d\n", sizeof(channel_t));
 
 	Timer progtime;
 
