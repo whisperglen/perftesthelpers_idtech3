@@ -48,6 +48,9 @@
     <ClCompile Include="csv.c">
       <Filter>Source Files\Tooling</Filter>
     </ClCompile>
+    <ClCompile Include="sndpaint.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\bdmpx.h">

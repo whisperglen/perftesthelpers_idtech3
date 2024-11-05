@@ -97,19 +97,19 @@ static size_t fread_internal(void * dst, size_t esz, size_t cnt, bdmpx_handle lo
   return ret;
 }
 
-static int fseek_internal(bdmpx_handle local, long off, int origin)
+static int fseek_internal(bdmpx_handle local, int off, int origin)
 {
-  size_t ret = 0;
+  int ret = -1;
   if(local->cache)
   {
-    long final = local->cache_pos;
+    int final = local->cache_pos;
     switch(origin)
     {
     case SEEK_CUR:
-      final = local->cache_pos + off;
+      final = (int)local->cache_pos + off;
       break;
     case SEEK_END:
-      final = local->f_sz + off;
+      final = (int)local->f_sz + off;
       break;
     case SEEK_SET:
       final = off;
@@ -117,10 +117,16 @@ static int fseek_internal(bdmpx_handle local, long off, int origin)
     }
     if(final < 0) final = 0;
     if((unsigned int)final > local->f_sz) final = local->f_sz;
-    local->cache_pos = final;
+    ret = local->cache_pos = final;
   }
   else
-    ret = fseek(local->f,off,origin);
+  {
+	  int ercd = fseek(local->f, off, origin);
+	  if (ercd == 0) //success
+	  {
+		  ret = ftell(local->f);
+	  }
+  }
 
   return ret;
 }
@@ -188,6 +194,48 @@ int bdmpx_read(bdmpx_handle hndl, int numparams, ...)
   va_end(args);
 
   return ret;
+}
+
+int bdmpx_peek(bdmpx_handle hndl)
+{
+	int ret = -1;
+	int ercd;
+	int elm_sz[MAX_NUM_PARAMS];
+
+	int j;
+	int i;
+	int mynumparams = MAX_NUM_PARAMS;
+
+	if (hndl == NULL) hndl = &default_hndl;
+	if (hndl->f == NULL) bdmpx_create(NULL, NULL, BDMPX_OP_READ);
+	if (hndl->f == NULL) return -1;
+
+	int rewpos = fseek_internal(hndl, 0, SEEK_CUR);
+	if (rewpos >= 0)
+	{
+
+		for (j = 0; /*j < mynumparams*/; j++)
+		{
+			int tmp;
+			size_t res = fread_internal(&tmp, sizeof(tmp), 1, hndl);
+			if (j < MAX_NUM_PARAMS)
+			{
+				elm_sz[j] = tmp;
+			}
+			if (tmp == 0 || res == 0)
+			{
+				break;
+			}
+		}
+
+		ercd = fseek_internal(hndl, rewpos, SEEK_SET);
+		if (ercd >= 0)
+		{
+			ret = j;
+		}
+	}
+
+	return ret;
 }
 
 int bdmpx_read_alloc(bdmpx_handle hndl, int numparams, ...)
@@ -313,11 +361,11 @@ int bdmpx_create(bdmpx_handle *ret_hndl, const char *filename, int operation)
 
   if(ret_hndl == NULL)
   {
-    if(default_hndl.f == NULL)
-    {
-      local = &default_hndl;
-      memset(local, 0 , sizeof(struct BDMPDX_CONFIG));
-    }
+	if(default_hndl.f != NULL)
+	{
+		bdmpx_close(&default_hndl);
+	}
+    local = &default_hndl;
   }
   else
   {
@@ -377,7 +425,7 @@ int bdmpx_close(bdmpx_handle hndl)
 
   if(local == NULL) return -1;
 
-  fclose(local->f);
+  if(local->f) fclose(local->f);
   FREE(local->cache);
   memset(local,0,sizeof(struct BDMPDX_CONFIG));
   if(local != &default_hndl)

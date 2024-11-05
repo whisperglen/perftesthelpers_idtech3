@@ -191,8 +191,8 @@ static bool check_uop_supported(void)
 
 //theres about 7.300.000 samples in the datafile
 //there is alot of data here, maybe we care about the cache sizes as well ;-)
-//#define TEST_SIZE (1000*1000)
-#define TEST_SIZE (128*1000)
+#define TEST_SIZE (1000*1000)
+//#define TEST_SIZE (128*1000)
 //#define TEST_SIZE (8*1000*1000)
 
 static vec4_t ina[TEST_SIZE];
@@ -244,7 +244,7 @@ void maintest_dotproduct(void)
     assert(sza == sizeof(vec3_t));
     assert(szb == sizeof(vec3_t));
   }
-  printf("Test inputs %d\n", j);
+  printf("DotProduct Test inputs %d\n", j);
 
   csv_put_string("test samples:");
   csv_put_int(j);
@@ -281,4 +281,6 @@ void maintest_dotproduct(void)
 			  printf("%d %s: %4.4f %4.4f\n", i, myinfo, output[i], output[k * TEST_SIZE + i]);
 	  }
   }
+
+  printf("\n");
 }

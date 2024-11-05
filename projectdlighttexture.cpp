@@ -8,6 +8,11 @@
 #include "bdmpx.h"
 #include "timing.h"
 #include "platform.h"
+#include "csv.h"
+
+#define ARRAY_SIZE(X) (sizeof(X)/sizeof(X[0]))
+
+#define GUARD_VAL 0x5a5aa5a5
 
 #define	myftol(x) ((int)(x))
 #define Q_fabs fabsf
@@ -69,7 +74,7 @@ typedef struct dlight_s {
 
 
 // surface geometry should not exceed these limits
-#define	SHADER_MAX_VERTEXES	1000
+#define	SHADER_MAX_VERTEXES	5000
 #define	SHADER_MAX_INDEXES	(6*SHADER_MAX_VERTEXES)
 
 static struct
@@ -88,7 +93,21 @@ static struct rval
 	float value;
 } greyscale = { 0,0. }, dlightBacks = { 1,1. }, *r_greyscale = &greyscale, *r_dlightBacks = &dlightBacks;
 
-static void ProjectDlightTexture_scalar(void) {
+static int out_index = 0;
+static int out_idxoff = 0;
+static int out_clroff = 0;
+static int out_err = 0;
+static struct
+{
+	int numIndexes[2];
+	int numColors[2];
+	glIndex_t	hitIndexes[2 * SHADER_MAX_INDEXES];
+	typedef byte color4_t[4];
+	color4_t	colorArray[2 * SHADER_MAX_VERTEXES];
+	int guard;
+} out_data;
+
+static void ProjectDlightTexture(void) {
 	int		i, l;
 	vec3_t	origin;
 	float	*texCoords;
@@ -239,6 +258,19 @@ static void ProjectDlightTexture_scalar(void) {
 			GL_State(GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_EQUAL);
 		}
 		R_DrawElements(numIndexes, hitIndexes);
+#else
+		out_data.numIndexes[out_index] += numIndexes;
+		out_data.numColors[out_index] += tess.numVertexes;
+		memcpy(&out_data.hitIndexes[out_idxoff], hitIndexes, numIndexes * sizeof(out_data.hitIndexes[0]));
+		memcpy(&out_data.colorArray[out_clroff], colorArray, tess.numVertexes * sizeof(out_data.colorArray[0]));
+		out_idxoff += numIndexes;
+		out_clroff += tess.numVertexes;
+		if (out_idxoff > ARRAY_SIZE(out_data.hitIndexes) || out_clroff > ARRAY_SIZE(out_data.colorArray) || out_data.guard != GUARD_VAL)
+		{
+			printf("Output out of bounds idx:%d\n", out_index);
+			out_err = 1;
+			return;
+		}
 #endif
 		backEnd.pc.c_totalIndexes += numIndexes;
 		backEnd.pc.c_dlightIndexes += numIndexes;
@@ -400,6 +432,16 @@ static void ProjectDlightTexture_vector(void) {
 		}
 		if (step != 0)
 		{
+			switch (step)
+			{
+			case 1:
+				colorVec = _mm_slli_si128(colorVec, 3); break;
+			case 2:
+				colorVec = _mm_slli_si128(colorVec, 2); break;
+			case 3:
+				colorVec = _mm_slli_si128(colorVec, 1); break;
+			}
+			
 			colorVec = _mm_shuffle_epi8(colorVec, shuf);
 			_mm_store_si128((__m128i *)colors, colorVec);
 		}
@@ -441,36 +483,88 @@ static void ProjectDlightTexture_vector(void) {
 			GL_State(GLS_SRCBLEND_DST_COLOR | GLS_DSTBLEND_ONE | GLS_DEPTHFUNC_EQUAL);
 		}
 		R_DrawElements(numIndexes, hitIndexes);
+#else
+		out_data.numIndexes[out_index] += numIndexes;
+		out_data.numColors[out_index] += tess.numVertexes;
+		memcpy(&out_data.hitIndexes[out_idxoff], hitIndexes, numIndexes * sizeof(out_data.hitIndexes[0]));
+		memcpy(&out_data.colorArray[out_clroff], colorArray, tess.numVertexes * sizeof(out_data.colorArray[0]));
+		out_idxoff += numIndexes;
+		out_clroff += tess.numVertexes;
+		if (out_idxoff > ARRAY_SIZE(out_data.hitIndexes) || out_clroff > ARRAY_SIZE(out_data.colorArray) || out_data.guard != GUARD_VAL)
+		{
+			printf("Output out of bounds idx:%d\n", out_index);
+			out_err = 1;
+			return;
+		}
 #endif
 		backEnd.pc.c_totalIndexes += numIndexes;
 		backEnd.pc.c_dlightIndexes += numIndexes;
 	}
 }
 
-struct dlight_s mydligths[100000];
+typedef void(*projectdlight_fn)(void);
+
+struct function_data
+{
+	void* fp;
+	const char* fname;
+};
+
+static struct function_data data_fn[] =
+{
+	{ ProjectDlightTexture,            "    projectdlight" },
+#if idsse
+	{ ProjectDlightTexture_vector,     "projectdlight_vec" },
+#endif
+	{ 0, 0 }
+};
+
+struct dlight_s mydligths[100];
 
 #define TEST_SAMPLESIZE 140000
+
+#define REPETITIONS 1
+#define MAX_ERRORS 20
 void maintest_projectdlighttexture(void)
 {
 	int i, j, k;
-	Timer timer0, timer1, timer2;
-	Cputime cpu0, cpu1, cpu2;
-	double elapsed0, elapsed1, elapsed2;
-	double cputime0, cputime1, cputime2;
+	int tested = 0;
+	int ercd = 0;
+	int err = 0;
+	Timer timer[ARRAY_SIZE(data_fn) - 1];
+	Cputime cpu[ARRAY_SIZE(data_fn) - 1];
+	double elapsed[ARRAY_SIZE(data_fn) - 1];
+	double cputime[ARRAY_SIZE(data_fn) - 1];
+
+	if ((ARRAY_SIZE(data_fn) - 1) > min(ARRAY_SIZE(out_data.hitIndexes)/ SHADER_MAX_INDEXES, ARRAY_SIZE(out_data.colorArray)/ SHADER_MAX_VERTEXES))
+	{
+		printf("Increase out_data.hitIndexes and out_data.colorArray to: %d * SHADER_MAX_NN\n", (int)ARRAY_SIZE(data_fn) - 1);
+		return;
+	}
 
 	tess.dlightBits = 3;
 	tess.numVertexes = 1;
 	backEnd.refdef.num_dlights = 1;
 	backEnd.refdef.dlights = mydligths;
 
+	ercd = csv_open("./results_projectdlight.csv");
+	if (ercd != 0)
+	{
+		printf("Could not open the csv file.\n\n");
+	}
 
-	bdmpx_create(NULL, "bdmpx_dlighttexture.bin", BDMPX_OP_READ);
+	ercd = bdmpx_create(NULL, "bdmpx_dlighttexture.bin", BDMPX_OP_READ);
+	if (ercd != 0)
+	{
+		printf("Could not open the test input file. Aborting.\n");
+		return;
+	}
 
 	for (j = 0; j < TEST_SAMPLESIZE; j++)
 	{
-		int ndl = 5;
-		int nv = 5;
-		int ni = 5;
+		int ndl = 4;
+		int nv = 4;
+		int ni = 4;
 		int dls = sizeof(mydligths);
 		int xyz = sizeof(tess.xyz);
 		int ids = sizeof(tess.indexes);
@@ -478,7 +572,7 @@ void maintest_projectdlighttexture(void)
 			&nv, &tess.numVertexes, &xyz, tess.xyz,
 			&ni, &tess.numIndexes, &ids, tess.indexes);
 
-		if (ercd == 0)
+		if (ercd != 6)
 			break;
 		assert(ercd == 6);
 		assert(ndl == 4);
@@ -488,28 +582,102 @@ void maintest_projectdlighttexture(void)
 		assert(xyz == tess.numVertexes*sizeof(vec4_t));
 		assert(ids == tess.numIndexes*sizeof(glIndex_t));
 
-
-		cpu0.reset();
-		timer0.reset();
-		for (i = 0; i < 10; i++)
+		if (backEnd.refdef.num_dlights * tess.numVertexes > SHADER_MAX_VERTEXES)
 		{
-			ProjectDlightTexture_scalar();
+			printf("Need more SHADER_MAX_VERTEXES: %d\n", backEnd.refdef.num_dlights * tess.numVertexes);
+			return;
 		}
-		elapsed0 = timer0.accum();
-		cputime0 = cpu0.accum();
 
-		cpu1.reset();
-		timer1.reset();
-		for (i = 0; i < 10; i++)
+		memset(&out_data, 0, sizeof(out_data));
+		out_data.guard = GUARD_VAL;
+
+		for (tested = 0; data_fn[tested].fp != 0; tested++)
 		{
-			ProjectDlightTexture_vector();
-		}
-		elapsed1 = timer1.accum();
-		cputime1 = cpu1.accum();
+			out_index = tested;
+			out_idxoff = tested * SHADER_MAX_INDEXES;
+			out_clroff = tested * SHADER_MAX_VERTEXES;
 
+			projectdlight_fn callme = (projectdlight_fn)data_fn[tested].fp;
+			const char* myinfo = data_fn[tested].fname;
+
+			cpu[tested].reset();
+			timer[tested].reset();
+			for (int r = 0; r < REPETITIONS; r++)
+			{
+#if REPETITIONS
+				out_data.numIndexes[tested] = 0;
+				out_data.numColors[tested] = 0;
+				out_idxoff = tested * SHADER_MAX_INDEXES;
+				out_clroff = tested * SHADER_MAX_VERTEXES;
+#endif
+
+				callme();
+			}
+			elapsed[tested] = timer[tested].accum();
+			cputime[tested] = cpu[tested].accum();
+
+			if (out_err)
+			{
+				printf("Out err id:%d seg:%d", tested, j);
+				return;
+			}
+		}
+
+		glIndex_t *sidx = &out_data.hitIndexes[0];
+		byte *scolor = out_data.colorArray[0];
+		glIndex_t *vidx;
+		byte *vcolor;
+		for (i = 1; i < tested; i++)
+		{
+			vidx = &out_data.hitIndexes[i * SHADER_MAX_INDEXES];
+			vcolor = out_data.colorArray[i * SHADER_MAX_VERTEXES];
+			if (out_data.numIndexes[0] != out_data.numIndexes[i])
+			{
+				printf("id:%d seg:%d idx mismatch scalar:%d vect:%d\n", i, j, out_data.numIndexes[0], out_data.numIndexes[i]);
+			}
+			if (out_data.numColors[0] != out_data.numColors[i])
+			{
+				printf("id:%d seg:%d color mismatch scalar:%d vect:%d\n", i, j, out_data.numColors[0], out_data.numColors[i]);
+			}
+			for (k = 0; k < out_data.numIndexes[0] && err < MAX_ERRORS; k++)
+			{
+				if(sidx[k] != vidx[k])
+				{
+					printf("id:%d seg:%d idxsamp:%d/%d scalar:%d vect:%d\n", i, j, k, out_data.numIndexes[0], sidx[k], vidx[k]);
+					err++;
+				}
+			}
+			for (k = 0; k < 4 * out_data.numColors[0] && err < MAX_ERRORS; k++)
+			{
+				if (scolor[k] != vcolor[k])
+				{
+					//there is a rounding error somewhere
+					if (abs(scolor[k] - vcolor[k]) > 1)
+					{
+						printf("id:%d seg:%d colorsamp:%d/%d scalar:%d vect:%d\n", i, j, k, 4 * out_data.numColors[0], scolor[k], vcolor[k]);
+						err++;
+					}
+				}
+			}
+		}
+	}
+	
+	printf("ProjectDlightTexture Test segments %d\n", j);
+	for (k = 0; k < tested; k++)
+	{
+		const char* myinfo = data_fn[k].fname;
+		printf("%d %s: %4.4f %4.4f %4.4f %4.4f\n", k, myinfo, elapsed[k], elapsed[k] / elapsed[0], cputime[k], cputime[k] / cputime[0]);
+		csv_put_float(elapsed[k]);
 	}
 
-	printf("size %d\n", j);
-	printf("scalar %4.4f %4.4f %4.4f %4.4f\n", elapsed0, cputime0, (elapsed1 - elapsed0) / elapsed1, (cputime1 - cputime0) / cputime1);
-	printf("vector %4.4f %4.4f %4.4f %4.4f\n", elapsed1, cputime1, (elapsed0 - elapsed1) / elapsed0, (cputime0 - cputime1) / cputime0);
+	csv_put_string(",");
+	for (k = 1; k < tested; k++)
+	{
+		csv_put_float(elapsed[k] / elapsed[0]);
+	}
+
+	csv_put_string("\n");
+	csv_close();
+
+	printf("\n");
 }

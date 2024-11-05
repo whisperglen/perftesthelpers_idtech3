@@ -1,6 +1,6 @@
 // perftesthelpers.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
-
+#include <stdio.h>
 #include <iostream>
 #include "timing.h"
 
@@ -10,6 +10,7 @@ extern void maintest_diffusecolor(void);
 extern void maintest_dotproduct(void);
 extern void maintest_lerpmeshvertexes(void);
 extern void maintest_projectdlighttexture(void);
+extern void maintest_sndpaint(void);
 
 int main()
 {
@@ -35,10 +36,13 @@ int main()
     printf("*** Debug Mode! ***\n\n");
 #endif
 
-    //maintest_rsqrt();
-    //maintest_sndmix();
-    //maintest_dotproduct();
+    maintest_rsqrt();
+    maintest_sndmix();
+    maintest_dotproduct();
     maintest_diffusecolor();
+	maintest_lerpmeshvertexes();
+	maintest_projectdlighttexture();
+	maintest_sndpaint();
 
     printf("\n");
     system("pause");

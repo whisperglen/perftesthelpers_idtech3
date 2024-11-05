@@ -217,7 +217,7 @@ void maintest_rsqrt(void)
 			j++;
 		}
 	}
-	printf("Test inputs %d\n", j);
+	printf("RSQRT Test inputs %d\n", j);
 
 	Timer timer;
 	float* out;
@@ -275,4 +275,6 @@ void maintest_rsqrt(void)
 		}
 		printf("diff: %d %g %.9f %.9f\n", k, min, max, avg / j);
 	}
+
+	printf("\n");
 }

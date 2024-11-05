@@ -4,10 +4,9 @@ Binary dumps can be found in the sister repo: https://github.com/whisperglen/per
 
 Commited so far:<br>
 -rsqrt conversion<br>
--sndmix conversion (S_WriteLinearBlastStereo16)<br>
--dotproduct experiments (SSE4.1 is good, SSE3 improves when run in a row on the same dataset)<br>
+-sndmix conversion (S_WriteLinearBlastStereo16 and S_PaintChannelFrom16)<br>
+-dotproduct experiments (SSE4.1 is good enough, SSE3 improves when run in a row on the same dataset)<br>
 -diffusecolor<br>
-With missing databins (status 'unvalidated' for now):<br>
 -lerpmeshvertexes<br>
 -projectdlighttexture<br>
 

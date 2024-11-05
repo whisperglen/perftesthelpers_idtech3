@@ -398,6 +398,92 @@ void RB_CalcDiffuseColor_vector( unsigned char *colors )
   //_mm_sfence();
 }
 
+void RB_CalcDiffuseColor_sse4(unsigned char *colors)
+{
+	int				i;
+	float			/**v,*/ *normal;
+	trRefEntity_t	*ent;
+	int				numVertexes, cycles;
+	__m128 vSel2;
+	__m128 ambientLightVec;
+	__m128 directedLightVec;
+	__m128 lightDirVec;
+	__m128 normalVec0, normalVec1, normalVec2, normalVec3;
+	__m128 incomingVec0, incomingVec1, incomingVec2, incomingVec3;
+	__m128 zero, jVec0, jVec1, jVec2, jVec3;
+	__m128i jVecInt0, jVecInt1, jVecInt2, jVecInt3;
+	__m128i shuf0;
+	
+	ent = backEnd.currentEntity;
+	ambientLightVec = _mm_loadu_ps(ent->ambientLight);
+	ambientLightVec = _mm_mul_ps(ambientLightVec, _mm_setr_ps(1., 1., 1., 0.));
+	ambientLightVec = _mm_add_ps(ambientLightVec, _mm_setr_ps(0., 0., 0., 255.));
+
+	directedLightVec = _mm_loadu_ps(ent->directedLight);
+
+	lightDirVec = _mm_loadu_ps(ent->lightDir);
+
+	zero = _mm_setzero_ps();
+	vSel2 = _mm_set_ps(255, 255, 255, 255);
+
+	//v = tess.xyz[0];
+	normal = tess.normal[0];
+
+	numVertexes = tess.numVertexes;
+	//normalVec = _mm_loadu_ps(normal);
+
+	//bdmpx_write(NULL, 4,sizeof(vec3_t),ent->ambientLight,sizeof(vec3_t),ent->directedLight,sizeof(vec3_t),ent->lightDir,sizeof(vec4_t)*numVertexes,normal);
+	//assert((normal)[3] == 0);
+	//normalVec = _mm_and_ps(zero4, normalVec);
+	for (i = 0; i < numVertexes; i += 4, /*v += 4,*/ normal += 16)
+	{
+		normalVec0 = _mm_load_ps(normal);
+		incomingVec0 = _mm_dp_ps(normalVec0, lightDirVec, 0x77);
+		incomingVec0 = _mm_max_ps(incomingVec0, zero);
+		jVec0 = _mm_mul_ps(incomingVec0, directedLightVec);
+		jVec0 = _mm_add_ps(jVec0, ambientLightVec);
+		jVec0 = _mm_min_ps(jVec0, vSel2);
+
+		jVecInt0 = _mm_cvttps_epi32(jVec0);
+
+		normalVec1 = _mm_load_ps(normal + 4);
+		incomingVec1 = _mm_dp_ps(normalVec1, lightDirVec, 0x77);
+		incomingVec1 = _mm_max_ps(incomingVec1, zero);
+		jVec1 = _mm_mul_ps(incomingVec1, directedLightVec);
+		jVec1 = _mm_add_ps(jVec1, ambientLightVec);
+		jVec1 = _mm_min_ps(jVec1, vSel2);
+		jVecInt1 = _mm_cvttps_epi32(jVec1);
+		jVecInt1 = _mm_slli_si128(jVecInt1, 1);
+
+		jVecInt0 = _mm_add_epi8(jVecInt0, jVecInt1);
+
+		normalVec2 = _mm_load_ps(normal + 8);
+		incomingVec2 = _mm_dp_ps(normalVec2, lightDirVec, 0x77);
+		incomingVec2 = _mm_max_ps(incomingVec2, zero);
+		jVec2 = _mm_mul_ps(incomingVec2, directedLightVec);
+		jVec2 = _mm_add_ps(jVec2, ambientLightVec);
+		jVec2 = _mm_min_ps(jVec2, vSel2);
+		jVecInt2 = _mm_cvttps_epi32(jVec2);
+		jVecInt2 = _mm_slli_si128(jVecInt2, 2);
+
+		jVecInt0 = _mm_add_epi8(jVecInt0, jVecInt2);
+
+		normalVec3 = _mm_load_ps(normal + 12);
+		incomingVec3 = _mm_dp_ps(normalVec3, lightDirVec, 0x77);
+		incomingVec3 = _mm_max_ps(incomingVec3, zero);
+		jVec3 = _mm_mul_ps(incomingVec3, directedLightVec);
+		jVec3 = _mm_add_ps(jVec3, ambientLightVec);
+		jVec3 = _mm_min_ps(jVec3, vSel2);
+		jVecInt3 = _mm_cvttps_epi32(jVec3);
+		jVecInt3 = _mm_slli_si128(jVecInt3, 3);
+
+		jVecInt0 = _mm_add_epi8(jVecInt0, jVecInt3);
+		shuf0 = _mm_setr_epi8(0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15);
+		jVecInt0 = _mm_shuffle_epi8(jVecInt0, shuf0);
+		_mm_storeu_si128((__m128i *)&colors[i * 4], jVecInt0);
+	}
+}
+
 typedef void (*diffuse_fn)(unsigned char* outputs);
 
 struct function_data
@@ -412,9 +498,7 @@ static struct function_data data_fn[] =
 #if idsse
 	{ RB_CalcDiffuseColor_enhanced,   "diffuse_enh" },
 	{ RB_CalcDiffuseColor_vector,     "diffuse_vec" },
-#endif
-#if idneon
-	{ neon,                           "       neon" },
+	{ RB_CalcDiffuseColor_sse4,       " diffuse_dp" },
 #endif
 	{ 0, 0 }
 };
@@ -467,7 +551,8 @@ void maintest_diffusecolor(void)
 
     if(tess.numVertexes > MAX_COLOR_SAMPLES)
     {
-      printf("%d %d", j , tess.numVertexes);
+      printf("Too many tess vertexes: %d %d", j , tess.numVertexes);
+	  return;
     }
 
     if(ercd != 4)
@@ -488,9 +573,9 @@ void maintest_diffusecolor(void)
 		elapsed[tested] = timer[tested].accum();
 	}
 
-	for (k = 0; k < tess.numVertexes/*MAX_COLOR_SAMPLES*/ && err < MAX_ERRORS; k++)
+	for (i = 1; i < tested; i++)
 	{
-		for (i = 1; i < tested; i++)
+		for (k = 0; k < tess.numVertexes/*MAX_COLOR_SAMPLES*/ && err < MAX_ERRORS; k++)
 		{
 			if (data.thecolors[k] != data.thecolors[i* MAX_COLOR_SAMPLES + k])
 			{
@@ -501,7 +586,7 @@ void maintest_diffusecolor(void)
 	}
   }
   
-  printf("Test segments %d\n", j);
+  printf("Diffusecolor Test segments %d\n", j);
   for (k = 0; k < tested; k++)
   {
 	  const char* myinfo = data_fn[k].fname;
@@ -517,5 +602,7 @@ void maintest_diffusecolor(void)
 
   csv_put_string("\n");
   csv_close();
+
+  printf("\n");
 
 }

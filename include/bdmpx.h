@@ -21,6 +21,8 @@ int bdmpx_read(bdmpx_handle hndl, int numparams, ...);
 
 int bdmpx_read_alloc(bdmpx_handle hndl, int numparams, ...);
 
+int bdmpx_peek(bdmpx_handle hndl);
+
 int bdmpx_rewind(bdmpx_handle hndl);
 
 #define BDMPX_OPTION_PRECACHE_FILE_FOR_READ 1

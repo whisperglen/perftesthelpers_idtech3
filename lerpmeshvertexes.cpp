@@ -8,6 +8,7 @@
 #include "bdmpx.h"
 #include "timing.h"
 #include "platform.h"
+#include "csv.h"
 
 #define	MAX_QPATH			64		// max length of a quake game pathname
 #define	SHADER_MAX_VERTEXES	1000
@@ -52,8 +53,8 @@ typedef struct {
 static struct shaderCommands_s
 {
 	int			numVertexes;
-	QALIGNA(16) vec4_t		xyz[SHADER_MAX_VERTEXES];
-	QALIGNA(16) vec4_t		normal[SHADER_MAX_VERTEXES];
+	QALIGNA(16) vec4_t		xyz[2 * SHADER_MAX_VERTEXES];
+	QALIGNA(16) vec4_t		normal[2 * SHADER_MAX_VERTEXES];
 	unsigned int guard;
 } tess;
 
@@ -69,7 +70,7 @@ static ID_INLINE float Q_rsqrt( float number )
   __m128 number_f;
   float ret;
 
-  if(number == 0.f) return 1.f;
+  if(number == 0.f) return 1.f / FLT_MIN;
 
   //number_f = _mm_load_ss(&number);
   number_f = _mm_set_ss(number);
@@ -110,7 +111,7 @@ short myoldxyz[SURFZS];
 /*
 ** LerpMeshVertexes
 */
-static void LerpMeshVertexes_scalar(md3Surface_t *surf, float backlerp)
+static void LerpMeshVertexes(md3Surface_t *surf, float backlerp)
 {
 	short	*oldXyz, *newXyz, *oldNormals, *newNormals;
 	float	*outXyz, *outNormal;
@@ -164,19 +165,19 @@ static void LerpMeshVertexes_scalar(md3Surface_t *surf, float backlerp)
 		//
 		// interpolate and copy the vertex and normal
 		//
-    oldXyz = &myoldxyz[0];//(short *)((byte *)surf + surf->ofsXyzNormals)
+		oldXyz = &myoldxyz[0];//(short *)((byte *)surf + surf->ofsXyzNormals)
 			//+ (backEnd.currentEntity->e.oldframe * surf->numVerts * 4);
 		oldNormals = oldXyz + 3;
 
 		oldXyzScale = MD3_XYZ_SCALE * backlerp;
 		oldNormalScale = backlerp;
 
-    //bdmpx_write(NULL, 1,numVerts*8,oldXyz);
+		//bdmpx_write(NULL, 1,numVerts*8,oldXyz);
 
 		for (vertNum=0 ; vertNum < numVerts ; vertNum++,
 			oldXyz += 4, newXyz += 4, oldNormals += 4, newNormals += 4,
 			outXyz += 4, outNormal += 4) 
-    {
+		{
 			vec3_t uncompressedOldNormal, uncompressedNewNormal;
 
 			// interpolate the xyz
@@ -408,87 +409,149 @@ static void LerpMeshVertexes_vector (md3Surface_t *surf, float backlerp)
    	}
 }
 
+typedef void(*lerpmesh_fn)(void *surf, float backlerp);
+
+struct function_data
+{
+	void* fp;
+	const char* fname;
+};
+
+static struct function_data data_fn[] =
+{
+	{ LerpMeshVertexes,            "    lerpmesh" },
+#if idsse
+	{ LerpMeshVertexes_vector,     "lerpmesh_vec" },
+#endif
+	{ 0, 0 }
+};
+
+#define ARRAY_SIZE(X) (sizeof(X)/sizeof(X[0]))
+
 #define TEST_SAMPLESIZE 140000
+
+#define REPETITIONS 1
+#define MAX_ERRORS 10
 void maintest_lerpmeshvertexes(void)
 {
   int i, j, k;
-  Timer timer0, timer1, timer2;
-  Cputime cpu0, cpu1, cpu2;
-  double elapsed0, elapsed1, elapsed2;
-  double cputime0, cputime1, cputime2;
+  int tested = 0;
+  int ercd;
+  int err = 0;
+  Timer timer[ARRAY_SIZE(data_fn) - 1];
+  Cputime cpu[ARRAY_SIZE(data_fn) - 1];
+  double elapsed[ARRAY_SIZE(data_fn) - 1];
+  double cputime[ARRAY_SIZE(data_fn) - 1];
+  int backlerp_was_zero = 0;
 
   float backlerp;
   md3Surface_t surf;
   surf.numVerts = 0;
-  tess.guard = ~0u;
 
   for ( i = 0; i < FUNCTABLE_SIZE; i++ )
   {
 		tr.sinTable[i]		= sin( DEG2RAD( i * 360.0f / ( ( float ) ( FUNCTABLE_SIZE - 1 ) ) ) );
   }
-  memset(&tess, 0, sizeof(tess));
 
-  bdmpx_create(NULL, "bdmpx_lerp.bin", BDMPX_OP_READ);
+  if ((ARRAY_SIZE(data_fn) - 1) * SHADER_MAX_VERTEXES > min(ARRAY_SIZE(tess.xyz), ARRAY_SIZE(tess.normal)))
+  {
+	  printf("Increase tess.xyz and tess.normal to: %d * SHADER_MAX_VERTEXES\n", ARRAY_SIZE(data_fn) - 1);
+	  return;
+  }
+
+  ercd = csv_open("./results_lerpmesh.csv");
+  if (ercd != 0)
+  {
+	  printf("Could not open the csv file.\n\n");
+  }
+
+  ercd = bdmpx_create(NULL, "bdmpx_lerp.bin", BDMPX_OP_READ);
+  if (ercd != 0)
+  {
+	  printf("Could not open the test input file. Aborting.\n");
+	  return;
+  }
 
   for(j = 0; j < TEST_SAMPLESIZE ; j++)
   {
-    int szbl = sizeof(float)+1;
-    int szoxyz = sizeof(tess.xyz)+1;
-    int sznorm = sizeof(tess.normal)+1;
-    int sznxyz = sizeof(mynewxyz)+1;
+    int szbl = sizeof(float);
+    int sznxyz = sizeof(mynewxyz);
     //bdmpx_write(NULL, 4,sizeof(float),&backlerp,numVerts*sizeof(vec4_t),outXyz,numVerts*sizeof(vec4_t),outNormal,numVerts*8,newXyz);
-    int ercd = bdmpx_read(NULL, 4, &szbl, &backlerp, &szoxyz, &tess.xyz[0], &sznorm, &tess.normal[0], &sznxyz, &mynewxyz[0]);
+    int ercd = bdmpx_read(NULL, 4, &szbl, &backlerp, 0, 0, 0, 0, &sznxyz, &mynewxyz[0]);
     
     if(ercd != 4)
       break;
     assert(szbl == sizeof(float));
-    assert(szoxyz < sizeof(tess.xyz));
-    assert(sznorm < sizeof(tess.normal));
     assert(sznxyz < sizeof(mynewxyz));
 
     surf.numVerts = sznxyz / 8;
 
     if(backlerp != 0)
     {
-      int szoxyz = sizeof(myoldxyz)+1;
+      int szoxyz = sizeof(myoldxyz);
       //bdmpx_write(NULL, 1,numVerts*8,oldXyz);
       ercd = bdmpx_read(NULL, 1, &szoxyz, &myoldxyz[0]);
       assert(szoxyz < sizeof(myoldxyz));
       assert(ercd == 1);
     }
+	else
+	{
+		backlerp_was_zero++;
+	}
 
-    tess.numVertexes = 0;
-    cpu0.reset();
-    timer0.reset();
-	  for (i = 0; i < 10; i++)
-	  {
-		  LerpMeshVertexes_scalar(&surf, backlerp);
-	  }
-	  elapsed0 = timer0.accum();
-    cputime0 = cpu0.accum();
+	memset(&tess, 0, sizeof(tess));
+	tess.guard = 0x5a5aa5a5;
 
-    tess.numVertexes = surf.numVerts;
-    cpu1.reset();
-    timer1.reset();
-	  for (i = 0; i < 10; i++)
-	  {
-		  LerpMeshVertexes_vector(&surf, backlerp);
-	  }
-	  elapsed1 = timer1.accum();
-    cputime1 = cpu1.accum();
+	for (tested = 0, tess.numVertexes = 0; data_fn[tested].fp != 0; tested++, tess.numVertexes += SHADER_MAX_VERTEXES)
+	{
+		lerpmesh_fn callme = (lerpmesh_fn)data_fn[tested].fp;
+		const char* myinfo = data_fn[tested].fname;
+
+		cpu[tested].reset();
+		timer[tested].reset();
+		for (int r = 0; r < REPETITIONS; r++)
+			callme(&surf, backlerp);
+		elapsed[tested] = timer[tested].accum();
+		cputime[tested] = cpu[tested].accum();
+	}
     
-    float *p = tess.xyz[0];
-    float *r = tess.xyz[surf.numVerts];
-    for(k = 0; k < surf.numVerts; k++)
-    {
-      if(p[k] != r[k])
-      {
-        printf("%d %d %d %f %f\n",j,k,surf.numVerts,p[k],r[k]);
-      }
-    }
+	if (tess.guard != 0x5a5aa5a5)
+	{
+		printf("seg:%d guard failed %x\n", j, tess.guard);
+	}
+    float *scoord = tess.xyz[0], *snorm = tess.normal[0];
+	float *vcoord, *vnorm;
+	for (i = 1; i < tested; i++)
+	{
+		vcoord = tess.xyz[i * SHADER_MAX_VERTEXES];
+		vnorm = tess.normal[i * SHADER_MAX_VERTEXES];
+		for (k = 0; k < 4 * /*SHADER_MAX_VERTEXES*/surf.numVerts && err < MAX_ERRORS; k++)
+		{
+			if ((scoord[k] != vcoord[k]) || (snorm[k] != vnorm[k]))
+			{
+				printf("id:%d seg:%d samp:%d/%d scalar:%f|%f vect:%f|%f\n", i, j, k, surf.numVerts * 4, scoord[k], snorm[k], vcoord[k], vnorm[k]);
+				err++;
+			}
+		}
+	}
   }
-  
-  printf("size %d\n", j);
-  printf("scalar %4.4f %4.4f %4.4f %4.4f\n", elapsed0, cputime0, (elapsed1 - elapsed0)/elapsed1, (cputime1-cputime0)/cputime1);
-  printf("vector %4.4f %4.4f %4.4f %4.4f\n", elapsed1, cputime1, (elapsed0 - elapsed1)/elapsed0, (cputime0-cputime1)/cputime0);
+
+  printf("LerpMesh Test segments %d (%d backlerps)\n", j, j-backlerp_was_zero);
+  for (k = 0; k < tested; k++)
+  {
+	  const char* myinfo = data_fn[k].fname;
+	  printf("%d %s: %4.4f %4.4f %4.4f %4.4f\n", k, myinfo, elapsed[k], elapsed[k] / elapsed[0], cputime[k], cputime[k] / cputime[0]);
+	  csv_put_float(elapsed[k]);
+  }
+
+  csv_put_string(",");
+  for (k = 1; k < tested; k++)
+  {
+	  csv_put_float(elapsed[k] / elapsed[0]);
+  }
+
+  csv_put_string("\n");
+  csv_close();
+
+  printf("\n");
 }

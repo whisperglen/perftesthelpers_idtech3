@@ -478,8 +478,6 @@ void maintest_sndmix(void)
 	//myfunc(buff,buffout);
 	//printf("%x %x %x %x %x %x %x %x\n",buffout[0],buffout[1],buffout[2],buffout[3],buffout[4],buffout[5],buffout[6],buffout[7]);
 
-
-#if 1
   int i, j, k;
   int tested = 0;
   int err = 0;
@@ -542,9 +540,9 @@ void maintest_sndmix(void)
 		cputime[tested] = cpu[tested].accum();
 	}
 
-    for(k = 0; k < MAX_SAMPLES && err < MAX_ERRORS; k++)
+    for (i = 1; i < tested; i++)
     {
-		for(i = 1; i < tested; i++)
+		for (k = 0; k < MAX_SAMPLES && err < MAX_ERRORS; k++)
 		{
 			if (snd_out_d[k] != snd_out_d[i * MAX_SAMPLES + k])
 			{
@@ -555,7 +553,7 @@ void maintest_sndmix(void)
     }
   }
 
-  printf("Test segments %d\n", j);
+  printf("SndMix Test segments %d\n", j);
   for (k = 0; k < tested; k++)
   {
 	  const char* myinfo = data_fn[k].fname;
@@ -571,5 +569,6 @@ void maintest_sndmix(void)
   csv_put_string("\n");
   csv_close();
 
-#endif
+  printf("\n");
+
 }
