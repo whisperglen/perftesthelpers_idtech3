@@ -152,14 +152,16 @@ static void S_PaintChannelFrom16(channel_t *ch, const sfx_t *sc, int count, int 
 #define SSEALIGNED(X) (((intptr_t)(X) & 15u) == 0)
 
 //NOTE: _mm_mul_epi32 is SSE4.1, but SSE4.1 already has _mm_mullo_epi32 which does what we want
+//    I see, maybe I wanted to use _mm_mul_epu32 which is SSE2 (I was testing on an amd bobcat at the time);
+//    therefore I replaced _mm_mul_epi32 with _mm_mul_epu32 below.
 #define SSE_USE_MULLO 1
 #if SSE_USE_MULLO
 #define mymul_s32 _mm_mullo_epi32
 #else
 static ID_INLINE __m128i mymul_s32(const __m128i a, const __m128i b)
 {
-	__m128i tmp1 = _mm_mul_epi32(a, b); /* mul 2,0*/
-	__m128i tmp2 = _mm_mul_epi32(_mm_srli_si128(a, 4), _mm_srli_si128(b, 4)); /* mul 3,1 */
+	__m128i tmp1 = _mm_mul_epu32(a, b); /* mul 2,0*/
+	__m128i tmp2 = _mm_mul_epu32(_mm_srli_si128(a, 4), _mm_srli_si128(b, 4)); /* mul 3,1 */
 	return _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(tmp1), _mm_castsi128_ps(tmp2), _MM_SHUFFLE(2, 0, 2, 0))); /* shuffle results and pack */
 }
 #endif
