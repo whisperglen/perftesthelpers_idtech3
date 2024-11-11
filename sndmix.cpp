@@ -380,6 +380,24 @@ void S_WriteLinearBlastStereo16_neon(void)
 
 #endif
 
+#if idarm
+void S_WriteLinearBlastStereo16_ARMv6(void)
+{
+	int		i;
+	int		val;
+	int		*src = snd_p;
+	short	*dst = snd_out;
+	int count = snd_linear_count;
+
+	for (i = 0; i < count; i++, src++, dst++)
+	{
+		val = *src;
+		asm("ssat %0, #16, %1, ASR #8" : "+r" (val) : "r" (val));
+		*dst = val;
+	}
+}
+#endif
+
 #if idneon
 void myfunc(const short *samples, int *out)
 {
@@ -455,6 +473,9 @@ static struct function_data data_fn[] =
 #endif
 #if idneon
 	{ S_WriteLinearBlastStereo16_neon,   "  sndmix_neon" },
+#endif
+#if idarm
+	{ S_WriteLinearBlastStereo16_ARMv6,  " sndmix_armv6"},
 #endif
 	{ 0, 0 }
 };
