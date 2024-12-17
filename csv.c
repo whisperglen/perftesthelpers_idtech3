@@ -2,6 +2,7 @@
 #include "csv.h"
 
 #include <stdio.h>
+#include <string.h>
 
 //FILE* local_f_csv = NULL;
 

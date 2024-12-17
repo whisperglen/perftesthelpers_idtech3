@@ -2,6 +2,7 @@
 #include <float.h>
 #include <cassert>
 #include <stdio.h>
+#include <string.h>
 #include <float.h>
 
 #include "platform.h"
@@ -13,7 +14,7 @@
 #include <intrin.h>
 #endif
 #if idneon
-#include <nenon.h>
+#include <arm_neon.h>
 #endif
 
 ID_INLINE float Q_rsqrt_q3( float number )
@@ -258,7 +259,7 @@ void maintest_rsqrt(void)
 	csv_put_string("\n");
 	csv_close();
 
-	printf("\ndiff: num min max avg\n");
+	printf("\ndiff: id min max avg\n");
 	for(k = 1; k < tested; k++)
 	{
 		double min = 100.0, max = 0.0, avg = 0.0;

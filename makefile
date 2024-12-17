@@ -1,9 +1,17 @@
 
 SOURCES = _main.cpp \
     bdmpx.c \
-    rsqrt.cpp
+	csv.c \
+	dotproduct.cpp \
+    rsqrt.cpp \
+	sndmix.cpp \
+	sndpaint.cpp \
+	diffusecolor.cpp \
+	lerpmeshvertexes.cpp \
+	projectdlighttexture.cpp
 
-DEFINES = -mfloat-abi=softfp -mfpu=neon -fno-default-inline -Winline
+#DEFINES = -mfloat-abi=softfp -mfpu=neon -fno-default-inline -Winline -fpermissive -funsafe-math-optimizations
+DEFINES = -fno-default-inline -Winline -fpermissive -O1
 
 INCLUDES = -I$(STAGING_INC) \
             -I. \
@@ -13,7 +21,7 @@ LIB_PATH = -L.
 
 LIBS = -lrt
 
-TARGET = test
+TARGET = testdata/test
 
 SUBUNITS = 
 

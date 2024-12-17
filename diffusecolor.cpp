@@ -2,14 +2,20 @@
 #include <math.h>
 #include <float.h>
 #include <cassert>
-#include <intrin.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "bdmpx.h"
 #include "timing.h"
 #include "platform.h"
 #include "csv.h"
+#if idsse
+#include <intrin.h>
+#endif
+#if idneon
+#include <arm_neon.h>
+#endif
 
 #define	myftol(x) ((int)(x))
 
@@ -21,6 +27,7 @@
 #define	VectorMA(v, s, b, o)	((o)[0]=(v)[0]+(b)[0]*(s),(o)[1]=(v)[1]+(b)[1]*(s),(o)[2]=(v)[2]+(b)[2]*(s))
 
 typedef int		qhandle_t;
+typedef char    byte;
 
 typedef float vec_t;
 typedef vec_t vec2_t[2];
@@ -164,6 +171,7 @@ static void RB_CalcDiffuseColor( unsigned char *colors )
 	}
 }
 
+#if idsse
 static void RB_CalcDiffuseColor_enhanced(unsigned char *colors)
 {
 	int				i, j;
@@ -483,6 +491,7 @@ void RB_CalcDiffuseColor_sse4(unsigned char *colors)
 		_mm_storeu_si128((__m128i *)&colors[i * 4], jVecInt0);
 	}
 }
+#endif
 
 typedef void (*diffuse_fn)(unsigned char* outputs);
 

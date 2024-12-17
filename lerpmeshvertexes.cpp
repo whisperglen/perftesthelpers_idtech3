@@ -2,13 +2,21 @@
 #include <math.h>
 #include <float.h>
 #include <cassert>
-#include <intrin.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "bdmpx.h"
 #include "timing.h"
 #include "platform.h"
 #include "csv.h"
+#if idsse
+#include <intrin.h>
+#endif
+#if idneon
+#include <arm_neon.h>
+#endif
+
+#define min(A, B) ((A) < (B) ? (A) : (B))
 
 #define	MAX_QPATH			64		// max length of a quake game pathname
 #define	SHADER_MAX_VERTEXES	1000
@@ -19,12 +27,12 @@
 #define FUNCTABLE_SIZE2		10
 #define FUNCTABLE_MASK		(FUNCTABLE_SIZE-1)
 
-#define ID_INLINE __inline
-
 #ifndef M_PI
 #define M_PI		3.14159265358979323846f	// matches value in gcc v2 math.h
 #endif
 #define DEG2RAD( a ) ( ( (a) * M_PI ) / 180.0F )
+
+typedef char byte;
 
 typedef float vec_t;
 typedef vec_t vec2_t[2];
@@ -65,6 +73,7 @@ static struct
 
 #define DotProduct(x,y)			((x)[0]*(y)[0]+(x)[1]*(y)[1]+(x)[2]*(y)[2])
 
+#if idsse
 static ID_INLINE float Q_rsqrt( float number )
 {
   __m128 number_f;
@@ -80,6 +89,14 @@ static ID_INLINE float Q_rsqrt( float number )
   _mm_store_ss(&ret, number_f);
   return ret;
 }
+#else
+static ID_INLINE float Q_rsqrt( float number )
+{
+	if (number == 0.f) return 1.f / FLT_MIN;
+
+	return 1.f/sqrtf(number);
+}
+#endif
 
 // fast vector normalize routine that does not check to make sure
 // that length != 0, nor does it return length, uses rsqrt approximation
@@ -213,9 +230,7 @@ static void LerpMeshVertexes(md3Surface_t *surf, float backlerp)
    	}
 }
 
-/*
-** LerpMeshVertexes
-*/
+#if idsse
 #define idppc_altivec 1
 static void LerpMeshVertexes_vector (md3Surface_t *surf, float backlerp) 
 {
@@ -408,6 +423,7 @@ static void LerpMeshVertexes_vector (md3Surface_t *surf, float backlerp)
     	VectorArrayNormalize((vec4_t *)tess.normal[tess.numVertexes], numVerts);
    	}
 }
+#endif
 
 typedef void(*lerpmesh_fn)(void *surf, float backlerp);
 

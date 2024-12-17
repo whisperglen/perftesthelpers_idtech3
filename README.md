@@ -1,6 +1,10 @@
 I used this harness to test my work for quake3, when converting altivec optimisations to SSE and neon.
 
 Binary dumps can be found in the sister repo: https://github.com/whisperglen/perftesthelpers_testdata.
+They need to be uncompressed and placed in the same folder as the executable (I use testdata folder).
+
+I implemented these to learn about SIMD on intel and arm, there is no real benefit from running them in a quake3 engine.<br>
+Even on the low spec x86 cpu I used (AMD bobcat) I did not notice a significant improvement in fps.
 
 Commited so far:<br>
 -rsqrt conversion<br>
@@ -10,9 +14,9 @@ Commited so far:<br>
 -lerpmeshvertexes<br>
 -projectdlighttexture<br>
 
-These results are from a destop with an i7-7700. When running on a laptop i7-6500u the SSE code performs a little better.
+These results are from a desktop with an i7-7700. When running on a laptop i7-6500u the SSE code performs a little better.
 
-Results:<br>
+Results (lower than 1.0 is an improvement):<br>
 | function          |  x86   |  x64   | x64/x86|
 | :---------------- | :----: | :----: | :----: |
 | rsqrt_math        |  1     | 1      | 0.67   |
@@ -40,3 +44,19 @@ Results:<br>
 |                   |        |        |        |
 | sndpaint          |  1     | 1      | 0.91   |
 | sndpaint_sse      |  0.31  | 0.32   | 0.29   |
+
+
+| function          | arm64  |
+| :---------------- | :----: |
+| rsqrt_math        | 1      |
+| rsqrt_q3          | 1.53   |
+| rsqrt_neon        | 0.68   |
+|                   |        |
+| sndmix_scalar     | 1      |
+| sndmix_neon       | 0.15   |
+|                   |        |
+| dotprod           | 1      |
+| dotprod_neon      | 1.03   |
+|                   |        |
+| sndpaint          | 1      |
+| sndpaint_neon     | 0.56   |

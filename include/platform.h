@@ -61,8 +61,8 @@
 #define idsse 1
 #endif
 
-#if defined __arm__
-#if defined __ARM_NEON__
+#if defined __arm__ || defined __ARM_ARCH
+#if defined __ARM_NEON__ || defined __ARM_NEON
 #undef idneon
 #define idneon 1
 #endif

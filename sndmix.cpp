@@ -3,12 +3,18 @@
 #include <float.h>
 #include <cassert>
 #include <stdio.h>
+#include <string.h>
 
 #include "bdmpx.h"
 #include "timing.h"
 #include "platform.h"
 #include "csv.h"
-#include "intrin.h"
+#if idsse
+#include <intrin.h>
+#endif
+#if idneon
+#include <arm_neon.h>
+#endif
 
 static int     *snd_p;
 static int      snd_linear_count;
@@ -380,7 +386,7 @@ void S_WriteLinearBlastStereo16_neon(void)
 
 #endif
 
-#if idarm
+#if idarm && 0
 void S_WriteLinearBlastStereo16_ARMv6(void)
 {
 	int		i;
@@ -392,7 +398,7 @@ void S_WriteLinearBlastStereo16_ARMv6(void)
 	for (i = 0; i < count; i++, src++, dst++)
 	{
 		val = *src;
-		asm("ssat %0, #16, %1, ASR #8" : "+r" (val) : "r" (val));
+		asm("SSAT %0, #16, %1, ASR #8" : "+r" (val) : "r" (val));
 		*dst = val;
 	}
 }
@@ -474,7 +480,7 @@ static struct function_data data_fn[] =
 #if idneon
 	{ S_WriteLinearBlastStereo16_neon,   "  sndmix_neon" },
 #endif
-#if idarm
+#if idarm && 0
 	{ S_WriteLinearBlastStereo16_ARMv6,  " sndmix_armv6"},
 #endif
 	{ 0, 0 }

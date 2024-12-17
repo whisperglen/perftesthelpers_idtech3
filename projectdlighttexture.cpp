@@ -2,15 +2,22 @@
 #include <math.h>
 #include <float.h>
 #include <cassert>
-#include <intrin.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "bdmpx.h"
 #include "timing.h"
 #include "platform.h"
 #include "csv.h"
+#if idsse
+#include <intrin.h>
+#endif
+#if idneon
+#include <arm_neon.h>
+#endif
 
 #define ARRAY_SIZE(X) (sizeof(X)/sizeof(X[0]))
+#define min(A, B) ((A) < (B) ? (A) : (B))
 
 #define GUARD_VAL 0x5a5aa5a5
 
@@ -27,6 +34,7 @@
 #define LERP( a, b, w ) ( ( a ) * ( 1.0f - ( w ) ) + ( b ) * ( w ) )
 #define LUMA( red, green, blue ) ( 0.2126f * ( red ) + 0.7152f * ( green ) + 0.0722f * ( blue ) )
 
+typedef char    byte;
 typedef int		qhandle_t;
 typedef unsigned short glIndex_t;
 
@@ -277,6 +285,7 @@ static void ProjectDlightTexture(void) {
 	}
 }
 
+#if idsse
 static void ProjectDlightTexture_vector(void) {
 	int		i, l;
 	__m128 modulateVec, floatColorVec;
@@ -501,6 +510,7 @@ static void ProjectDlightTexture_vector(void) {
 		backEnd.pc.c_dlightIndexes += numIndexes;
 	}
 }
+#endif
 
 typedef void(*projectdlight_fn)(void);
 

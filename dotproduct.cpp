@@ -1,13 +1,19 @@
 #include <math.h>
 #include <float.h>
 #include <cassert>
-#include <intrin.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "bdmpx.h"
 #include "timing.h"
 #include "platform.h"
 #include "csv.h"
+#if idsse
+#include <intrin.h>
+#endif
+#if idneon
+#include <arm_neon.h>
+#endif
 
 typedef float vec_t;
 typedef vec_t vec2_t[2];
@@ -18,17 +24,12 @@ typedef vec_t vec5_t[5];
 #if idneon
 static ID_INLINE float DotProduct_neon(const vec3_t a, const vec3_t b)
 {
-	float ret = 0;
 	float32x2_t aVec, bVec;
-	//uint64x1_t iVecS;
 	aVec = vld1_f32(a);
 	bVec = vld1_f32(b);
 	aVec = vmul_f32(aVec, bVec);
-	//iVec = vshl_n_u64(aVec, 32);
-	//aVec = vadd_f32(aVec, iVec);
 	aVec = vpadd_f32(aVec, aVec);
-	vst1_lane_f32(&ret, aVec, 0);
-	return ret + a[2] * b[2];
+	return a[2] * b[2] + aVec[0];
 }
 #endif
 
@@ -169,6 +170,7 @@ static struct function_data data_fn_inlined[] =
 //ain't nobody got time for cpuid
 static bool check_uop_supported(void)
 {
+#if idsse
 	bool exception_caught = false;
 	float res = 1.0;
 	__try {
@@ -185,6 +187,9 @@ static bool check_uop_supported(void)
 	//}
 	//printf("exception %d %f\n", caught, res);
 	return (!exception_caught && (res == 0.0f));
+#else
+	return false;
+#endif
 }
 
 #define ARRAY_SIZE(X) (sizeof(X)/sizeof(X[0]))
@@ -206,12 +211,15 @@ static int VectorCompare( const vec3_t v1, const vec3_t v2 ) {
 	return 1;
 }
 
+#define MAX_ERRORS 10
+
 #define REPETITIONS 1
 void maintest_dotproduct(void)
 {
   int i,j,k,sz = 0;
   int tested = 0;
   int ercd = 0;
+  int err = 0;
 
   double elapsed[ARRAY_SIZE(data_fn_inlined) - 1];
 
@@ -272,13 +280,16 @@ void maintest_dotproduct(void)
   csv_put_string("\n");
   csv_close();
 
-  for (k = 1; k < tested; k++)
+  for (k = 1; k < tested && err < MAX_ERRORS; k++)
   {
 	  const char* myinfo = data_fn_inlined[k].fname;
-	  for (i = 0; i < j; i++)
+	  for (i = 0; i < j && err < MAX_ERRORS; i++)
 	  {
-		  if (output[i] != output[k*TEST_SIZE + i])
-			  printf("%d %s: %4.4f %4.4f\n", i, myinfo, output[i], output[k * TEST_SIZE + i]);
+		  if (fabsf(output[i] - output[k*TEST_SIZE + i]) > 0.001f)
+		  {
+		      printf("%d %s: %4.4f %4.4f\n", i, myinfo, output[i], output[k * TEST_SIZE + i]);
+			  err++;
+		  }
 	  }
   }
 

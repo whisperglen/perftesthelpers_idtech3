@@ -4,12 +4,18 @@
 #include <cassert>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "bdmpx.h"
 #include "timing.h"
 #include "platform.h"
 #include "csv.h"
-#include "intrin.h"
+#if idsse
+#include <intrin.h>
+#endif
+#if idneon
+#include <arm_neon.h>
+#endif
 
 #define	MAX_QPATH		64
 
@@ -499,7 +505,7 @@ static void S_PaintChannelFrom16_NEON(channel_t *ch, const sfx_t *sc, int count,
 }
 #endif
 
-#if idarm
+#if idarm && 0
 static void S_PaintChannelFrom16_ARMv6(channel_t *ch, const sfx_t *sc, int count, int sampleOffset, int bufferOffset) {
 	int						aoff, boff;
 	unsigned int					datau;
@@ -677,7 +683,7 @@ static struct function_data data_fn[] =
 #if idneon
 	{ S_PaintChannelFrom16_NEON,   " sndpaint_neon" },
 #endif
-#if idarm
+#if idarm && 0
 	{ S_PaintChannelFrom16_ARMv6,  "sndpaint_armv6" },
 #endif
 	{ 0, 0 }

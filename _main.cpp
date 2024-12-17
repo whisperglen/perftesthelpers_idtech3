@@ -45,7 +45,11 @@ int main()
 	maintest_sndpaint();
 
     printf("\n");
+#ifdef _WIN32
     system("pause");
+#else
+    system("printf 'Press [ENTER] to exit..'\nread _");
+#endif
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
